@@ -3,57 +3,36 @@
   import { animationKind, memorySamples, missIndices } from "./guide-model.js";
   let { id } = $props();
   const kind = $derived(animationKind(id));
+  const RUN = 5000;
+  const HOLD = 1500;
+  const FADE = 400;
   let progress = $state(0);
-  let playing = $state(false);
-  let reduced = $state(false);
-  let frame;
-  let last;
-  const tick = (now) => {
-    if (!playing) return;
-    if (last != null) progress = Math.min(1, progress + (now - last) / 6000);
-    last = now;
-    if (progress >= 1) {
-      playing = false;
-      last = undefined;
-    } else frame = requestAnimationFrame(tick);
-  };
-  function play() {
-    if (progress >= 1) progress = 0;
-    playing = true;
-    last = undefined;
-    cancelAnimationFrame(frame);
-    frame = requestAnimationFrame(tick);
-  }
-  function pause() {
-    playing = false;
-    cancelAnimationFrame(frame);
-    last = undefined;
-  }
-  function replay() {
-    pause();
-    progress = 0;
-    play();
-  }
+  let fading = $state(false);
   onMount(() => {
     const preference = matchMedia("(prefers-reduced-motion: reduce)");
-    const changed = () => {
-      reduced = preference.matches;
-      if (reduced) {
-        pause();
-        progress = 1;
-      }
+    let frame;
+    let start;
+    const loop = (now) => {
+      start ??= now;
+      const elapsed = (now - start) % (RUN + HOLD);
+      progress = Math.min(1, elapsed / RUN);
+      fading = elapsed > RUN + HOLD - FADE;
+      frame = requestAnimationFrame(loop);
     };
-    changed();
-    if (!reduced) play();
-    const hidden = () => {
-      if (document.hidden) pause();
+    const sync = () => {
+      cancelAnimationFrame(frame);
+      start = undefined;
+      fading = false;
+      if (preference.matches) progress = 1;
+      else if (!document.hidden) frame = requestAnimationFrame(loop);
     };
-    preference.addEventListener("change", changed);
-    document.addEventListener("visibilitychange", hidden);
+    sync();
+    preference.addEventListener("change", sync);
+    document.addEventListener("visibilitychange", sync);
     return () => {
-      pause();
-      preference.removeEventListener("change", changed);
-      document.removeEventListener("visibilitychange", hidden);
+      cancelAnimationFrame(frame);
+      preference.removeEventListener("change", sync);
+      document.removeEventListener("visibilitychange", sync);
     };
   });
   const steps = $derived(Math.floor(progress * 10));
@@ -72,17 +51,18 @@
   );
   const timeLabel = $derived(
     id === "wall_time"
-      ? "경과 시간"
+      ? "Elapsed time"
       : id === "cpu_time"
-        ? "CPU 사용 시간"
+        ? "CPU time"
         : id === "user_time"
           ? "User CPU"
           : "System CPU",
   );
 </script>
 
-<section class="metric-demo" aria-label="지표 설명 애니메이션">
-  <p class="demo-caption">설명용 예시 · 실제 벤치마크 결과와는 별개입니다.</p>
+<section class="metric-demo" aria-label="Metric illustration">
+  <p class="demo-caption">Illustrative example. These are not benchmark results.</p>
+  <div class="demo-stage" class:fading>
   {#if kind === "time"}
     <div class="demo-reading">
       <span>{timeLabel}</span><strong
@@ -92,7 +72,7 @@
     <div
       class="timeline"
       role="img"
-      aria-label="100ms 중 user 실행 60ms, 커널 실행 15ms, 대기 25ms. CPU 사용 시간은 75ms입니다."
+      aria-label="Of 100 ms, 60 ms is user time, 15 ms is system time, and 25 ms is waiting. CPU time is 75 ms."
     >
       <div class="time-track">
         <span class="user" style:opacity={id === "system_time" ? 0.2 : 1}
@@ -101,6 +81,7 @@
         ></span>
         <span class="waiting" style:opacity={id === "wall_time" ? 1 : 0.2}
         ></span>
+        <em style:left={`${progress * 100}%`}></em>
         <i style:left={`${progress * 100}%`}></i>
       </div>
       <div class="time-labels">
@@ -109,26 +90,26 @@
         >
       </div>
       <div class="time-endpoints">
-        <span>시작 · 0 ms</span><span>완료 · 100 ms</span>
+        <span>Start · 0 ms</span><span>End · 100 ms</span>
       </div>
     </div>
     <p class="demo-note">
       {id === "wall_time"
-        ? "실행 중인 시간과 기다리는 시간을 모두 셉니다."
-        : "이 예시는 한 스레드가 순서대로 실행됩니다. CPU 시간은 대기를 제외한 실행 시간입니다."}
+        ? "Wall time includes execution and waiting."
+        : "This example runs one thread sequentially. CPU time excludes waiting."}
     </p>
   {:else if kind === "memory"}
     <div class="demo-reading">
-      <span>관측한 최대 점유</span><strong>{peak} <small>MiB</small></strong>
+      <span>Peak observed usage</span><strong>{peak} <small>MiB</small></strong>
     </div>
     <div class="memory-axis">
-      <span>메모리 점유 · MiB</span><span>120</span>
+      <span>Memory usage · MiB</span><span>120</span>
     </div>
     <svg
       class="memory-plot"
       viewBox="0 0 360 145"
       role="img"
-      aria-label="메모리 점유가 오르내리다가 120MiB에 도달합니다. 이후 점유가 줄어도 peak는 120MiB로 남습니다."
+      aria-label="Memory usage rises and falls, reaching 120 MiB. The peak remains 120 MiB as usage falls."
     >
       <defs
         ><clipPath id="memory-reveal"
@@ -160,41 +141,39 @@
       />
     </svg>
     <div class="time-endpoints">
-      <span>0 · 실행 시작</span><span>실행 완료</span>
+      <span>0 · Start</span><span>End</span>
     </div>
     <p class="demo-note">
-      파란 선은 점유 변화, 점선은 지금까지 관측한 최대값입니다. 점유가 줄어도
-      peak는 내려가지 않습니다.
+      The blue line shows usage; the dotted line shows the highest value observed so far.
     </p>
   {:else if kind === "throughput"}
     <div class="demo-reading">
-      <span>이 예시의 처리량</span><strong>10 <small>op/s</small></strong>
+      <span>Example throughput</span><strong>10 <small>op/s</small></strong>
     </div>
     <div
       class="work-grid"
       role="img"
-      aria-label="1초 동안 작업 10개가 완료됩니다. 작업 하나당 100ms라면 처리량은 10op/s입니다."
+      aria-label="Ten operations complete in one second. At 100 ms per operation, throughput is 10 op/s."
     >
       {#each Array(10) as _, i}<span class:done={i < steps}
           >{i < steps ? "✓" : "·"}</span
         >{/each}
     </div>
     <div class="time-endpoints">
-      <span>완료 {steps} / 10 op</span><span>{progress.toFixed(1)} / 1.0 s</span
+      <span>Completed {steps} / 10 op</span><span>{progress.toFixed(1)} / 1.0 s</span
       >
     </div>
     <p class="demo-note">
-      1 op에 0.1초가 걸리면 1초에 10 op를 처리합니다. 작업 하나는 전체 입력을
-      처리하는 호출 한 번입니다.
+      At 0.1 seconds per operation, throughput is 10 op/s. One operation is one call over the full input.
     </p>
   {:else if kind === "cpu"}
     <div class="demo-reading">
       <span
         >{id === "ipc"
-          ? "이 예시의 IPC"
+          ? "Example IPC"
           : id === "instructions"
-            ? "완료한 명령어"
-            : "소비한 cycle"}</span
+            ? "Instructions completed"
+            : "Cycles consumed"}</span
       ><strong
         >{id === "ipc" ? "2" : id === "instructions" ? steps * 2 : steps}<small
           >{id === "ipc"
@@ -208,29 +187,28 @@
     <div
       class="work-grid cpu-grid"
       role="img"
-      aria-label="cycle 10개에 명령어 20개를 완료합니다. cycle 하나당 명령어 두 개이므로 IPC는 2입니다."
+      aria-label="Twenty instructions complete in ten cycles, giving an IPC of 2."
     >
       {#each Array(10) as _, i}<span class:done={i < steps}
           ><b>··</b><b>│</b></span
         >{/each}
     </div>
     <div class="time-endpoints">
-      <span>명령어 {steps * 2}개</span><span>cycle {steps}개</span>
+      <span>{steps * 2} instructions</span><span>{steps} cycles</span>
     </div>
     <p class="demo-note">
-      각 칸은 cycle 하나와 완료한 명령어 두 개를 나타냅니다. 같은 명령어 수도
-      소비한 cycle 수에 따라 IPC가 달라집니다.
+      Each cell represents one cycle and two completed instructions. IPC depends on both counts.
     </p>
   {:else if kind === "branch"}
     <div class="demo-reading">
-      <span>분기 예측 실패</span><strong
+      <span>Branch misses</span><strong
         >{[3, 8].filter((i) => i < steps).length} <small>misses</small></strong
       >
     </div>
     <div
       class="work-grid"
       role="img"
-      aria-label="분기 10개 중 두 번의 예측이 실제 실행 방향과 다릅니다."
+      aria-label="Two out of ten branch predictions are wrong."
     >
       {#each Array(10) as _, i}<span
           class:done={i < steps}
@@ -239,17 +217,16 @@
         >{/each}
     </div>
     <div class="time-endpoints">
-      <span>✓ 예측 일치</span><span>× 예측 실패</span>
+      <span>✓ Correct</span><span>× Miss</span>
     </div>
     <p class="demo-note">
-      실제 분기 방향이 예측과 다르면 miss를 셉니다. jmark에는 op당 실패 횟수를
-      저장합니다.
+      A miss occurs when the predicted branch direction is wrong. jmark stores misses per operation.
     </p>
   {:else}
     <div class="demo-reading">
       <span
         >{id === "cache_miss_rate"
-          ? "이 예시의 miss 비율"
+          ? "Example miss rate"
           : id === "cache_misses"
             ? "Cache misses"
             : "Cache references"}</span
@@ -265,7 +242,7 @@
     <div
       class="work-grid cache-grid"
       role="img"
-      aria-label="캐시 접근 20회 중 4회가 miss입니다. 전체 예시의 miss 비율은 20%입니다."
+      aria-label="Four of twenty cache accesses miss, for a miss rate of 20%."
     >
       {#each Array(20) as _, i}<span
           class:done={i < accesses}
@@ -274,39 +251,14 @@
         >{/each}
     </div>
     <div class="time-endpoints">
-      <span>접근 {accesses}회 · miss {misses}회</span><span>✓ hit · × miss</span
+      <span>{accesses} accesses · {misses} misses</span><span>✓ hit · × miss</span
       >
     </div>
     <p class="demo-note">
-      각 칸은 캐시 접근 한 번입니다. 전체 20회 중 miss가 4회이므로 비율은 4 / 20
-      = 20%입니다.
+      Each cell is one cache access. Four misses out of twenty accesses give a rate of 20%.
     </p>
   {/if}
-  <div class="demo-controls">
-    <button type="button" onclick={() => (playing ? pause() : play())}
-      >{playing ? "일시 정지" : "재생"}</button
-    >
-    <button type="button" onclick={replay}>다시 보기</button>
-    <label
-      >재생 위치<input
-        type="range"
-        min="0"
-        max="1"
-        step="0.01"
-        bind:value={progress}
-        oninput={pause}
-      /></label
-    >
   </div>
-  <p class="motion-status" aria-live="polite">
-    {reduced
-      ? "동작 줄이기 설정이 켜져 있어 정지 화면으로 시작합니다."
-      : playing
-        ? "예시 재생 중"
-        : progress === 1
-          ? "예시 재생 완료"
-          : "예시 일시 정지"}
-  </p>
 </section>
 
 <style>
@@ -316,14 +268,19 @@
     padding: 24px 0 16px;
   }
   .demo-caption,
-  .demo-note,
-  .motion-status {
+  .demo-note {
     color: #65748b;
     font-size: 13px;
     line-height: 1.7;
   }
   .demo-caption {
     margin: 0 0 22px;
+  }
+  .demo-stage {
+    transition: opacity 0.4s ease;
+  }
+  .demo-stage.fading {
+    opacity: 0;
   }
   .demo-reading {
     display: flex;
@@ -364,6 +321,13 @@
       #e8ecf2 8px
     );
   }
+  .time-track em {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    background: rgb(255 255 255 / 0.7);
+  }
   .time-track i {
     position: absolute;
     height: 46px;
@@ -401,8 +365,13 @@
     color: #7b8797;
     border: 1px solid #dce3ee;
     border-radius: 4px;
+    transition:
+      background-color 0.25s ease,
+      border-color 0.25s ease,
+      color 0.25s ease;
   }
   .work-grid .done {
+    animation: settle 0.3s ease-out;
     background: #e8f1ff;
     border-color: #2563eb;
     color: #2563eb;
@@ -427,25 +396,19 @@
   }
   .demo-note {
     min-height: 44px;
-    margin: 22px 0;
+    margin: 22px 0 0;
   }
-  .demo-controls {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
+  @keyframes settle {
+    from {
+      transform: scale(0.85);
+    }
   }
-  .demo-controls label {
-    flex: 1;
-    min-width: 120px;
-  }
-  .demo-controls input {
-    width: 100%;
-    accent-color: #2563eb;
-  }
-  .motion-status {
-    font-size: 12px;
-    margin-bottom: 0;
+  @media (prefers-reduced-motion: reduce) {
+    .demo-stage,
+    .work-grid span {
+      transition: none;
+      animation: none;
+    }
   }
   @media (max-width: 600px) {
     .demo-reading strong {

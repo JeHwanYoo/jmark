@@ -6,6 +6,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	goruntime "runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -186,6 +187,13 @@ func TestMetricSemantics(t *testing.T) {
 	}
 	if values["cpu_time"].Reason != "below_noise_floor" || values["cache_misses"].Status != "unavailable" {
 		t.Fatal(values)
+	}
+	wantMissing := "unsupported_on_platform"
+	if benchmark.ReadingSupported("cache_misses", goruntime.GOOS) {
+		wantMissing = "not_reported_by_collector"
+	}
+	if values["cache_misses"].Reason != wantMissing {
+		t.Fatalf("cache_misses reason on %s: %+v", goruntime.GOOS, values["cache_misses"])
 	}
 	p.Params.Metrics = []string{"peak_rss"}
 	got, err = result.Build(p, obs)

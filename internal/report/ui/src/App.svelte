@@ -1,4 +1,5 @@
 <script>
+  import { tick } from "svelte";
   import MetricHelp from "./MetricHelp.svelte";
   import Brand from "./Brand.svelte";
   import RepositoryLink from "./RepositoryLink.svelte";
@@ -8,6 +9,7 @@
   import SearchSelect from "./SearchSelect.svelte";
   import {
     colors,
+    chartData,
     metrics,
     metricKey,
     displayRow,
@@ -71,6 +73,15 @@
       chartRows.every((r) => r.value > 0),
   );
   const activeScale = $derived(canLog ? scale : "linear");
+  const printBounds = $derived.by(() => {
+    const values = chartRows.map((row) => row.value);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    return min === max ? undefined : {
+      min: activeScale === "log" ? min : Math.min(0, min),
+      max: activeScale === "log" ? max : Math.max(0, max),
+    };
+  });
   const environments = $derived([
     ...new Map(
       filtered.map((r) => [
@@ -85,12 +96,31 @@
       ]),
     ).values(),
   ]);
+  let printPages = $state([]);
+  async function printChart() {
+    const layout = chartData(chartRows, axis, activeSeries);
+    const perPage = Math.max(1, Math.floor(520 / (layout.seriesNames.length * 32 + 24)));
+    printPages = [];
+    for (let start = 0; start < layout.categories.length; start += perPage) {
+      printPages.push(layout.points
+        .filter((point) => point.category >= start && point.category < start + perPage)
+        .map((point) => point.row));
+    }
+    await tick();
+    await document.fonts.ready;
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    window.print();
+  }
+  function clearPrintPages() {
+    printPages = [];
+  }
 </script>
 
 <svelte:head
   ><title>jmark · {filtered[0]?.project ?? rows[0]?.project ?? "Results"}</title
   ></svelte:head
 >
+<svelte:window onafterprint={clearPrintPages} />
 <header>
   <div class="brand-group">
     {#if indexHref}<a
@@ -119,7 +149,7 @@
           label="Metric"
           options={metricChoices.map((m) => ({ value: m.key, label: m.label }))}
           bind:value={() => metric ?? "", (next) => (selectedMetric = next)}
-        /><MetricHelp metric={filtered[0]?.metric} />
+        /><MetricHelp metric={metric && JSON.parse(metric)[0]} />
       </div>
       {#if choices.length > 1}
         <SearchSelect
@@ -193,6 +223,7 @@
             bind:value={() => activeSeries, (next) => (series = next)}
           />
           <span class="axis-unit">X axis · {unit(filtered[0])}</span>
+          <button disabled={!chartRows.length} onclick={printChart}>Print / Save PDF</button>
         </div>
         <div class="legend">
           {#each legend as name}<span
@@ -280,3 +311,24 @@
   </details>
   <Sources markdown={sources} />
 </main>
+{#if printPages.length}
+  <div class="print-document">
+    {#each printPages as page, index}
+      <section class="print-page">
+        <p class="print-brand">jmark · Benchmark comparison</p>
+        <h1>{filtered[0]?.project ?? rows[0]?.project ?? "Results"}</h1>
+        <p class="print-meta">{choices.find((choice) => choice.key === condition)?.label}</p>
+        <p class="print-meta">
+          {metricChoices.find((choice) => choice.key === metric)?.label} ·
+          {activeScale} scale · Y axis: {dimensions.find((d) => d.value === axis)?.label} ·
+          Series: {dimensions.find((d) => d.value === activeSeries)?.label}
+        </p>
+        <div class="legend">
+          {#each legend as name}<span><i style:background={colors[domain.indexOf(name) % colors.length]}></i>{name}</span>{/each}
+        </div>
+        <Chart rows={page} scale={activeScale} {axis} series={activeSeries} {domain} bounds={printBounds} print />
+        <p class="print-footer">Page {index + 1} / {printPages.length}</p>
+      </section>
+    {/each}
+  </div>
+{/if}

@@ -16,6 +16,73 @@ export function metricSections(document) {
     };
   });
 }
+export const platforms = ["darwin", "linux", "windows"];
+export const platformName = (os) =>
+  ({ darwin: "macOS", linux: "Linux", windows: "Windows" })[os] ?? os;
+export function hostPlatform(host) {
+  const os = String(host?.os ?? "").toLowerCase();
+  if (/^(mingw|msys|cygwin|windows)/.test(os)) return "windows";
+  return os || undefined;
+}
+export function supported(catalog, id, os) {
+  const readings = catalog?.metrics?.[id]?.readings;
+  if (!readings || !os) return undefined;
+  return readings.every((reading) =>
+    catalog.readings.find((r) => r.id === reading)?.platforms.includes(os),
+  );
+}
+// Collected readings come from row observations: hyperfine exports every reading it gathered.
+export function metricStatus(id, rows, catalog) {
+  const own = rows.filter((row) => row.metric === id);
+  if (own.some((row) => row.status === "ok")) return { kind: "measured" };
+  if (own.length) return { kind: "unavailable", reason: own[0].reason };
+  const readings = catalog?.metrics?.[id]?.readings;
+  if (!readings || !rows.length) return { kind: "unknown" };
+  const collected = new Set(rows.flatMap((row) => Object.keys(row.observations ?? {})));
+  const missing = readings.filter((reading) => !collected.has(reading));
+  if (!missing.length) return { kind: "available" };
+  const os = hostPlatform(rows[0].host);
+  if (supported(catalog, id, os) === false)
+    return { kind: "unsupported", os, readings: missing };
+  return { kind: "withheld", readings: missing };
+}
+const reasons = {
+  unsupported_on_platform: "not supported on this OS",
+  not_reported_by_collector: "not reported on this host",
+  below_noise_floor: "below measurement resolution",
+  zero_denominator: "zero denominator",
+};
+export function statusLabel(status) {
+  switch (status.kind) {
+    case "measured":
+      return "Measured";
+    case "unavailable":
+      return `Unavailable · ${reasons[status.reason] ?? status.reason ?? "unknown reason"}`;
+    case "available":
+      return "Available, not requested";
+    case "unsupported":
+      return `Not supported on ${platformName(status.os)}`;
+    case "withheld":
+      return "Not reported on this host";
+    default:
+      return "";
+  }
+}
+export function guideSections(sections, rows = [], catalog) {
+  const measured = new Map(rows.map((row) => [row.metric, row.label || row.metric]));
+  const custom = [...measured]
+    .filter(([id]) => !sections.some((section) => section.id === id))
+    .map(([id, label]) => ({ id, label }));
+  const all = [...sections, ...custom].map((section) => ({
+    ...section,
+    status: metricStatus(section.id, rows, catalog),
+  }));
+  if (!rows.length) return { inReport: [], other: all };
+  return {
+    inReport: all.filter((section) => measured.has(section.id)),
+    other: all.filter((section) => !measured.has(section.id)),
+  };
+}
 export const guideHref = (id) =>
   `#metrics/${encodeURIComponent(id || "wall_time")}`;
 export function guideMetric(hash) {

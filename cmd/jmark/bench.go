@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	goruntime "runtime"
 	"strings"
 	"time"
 
@@ -96,7 +97,7 @@ func (a *app) cmdBench(args []string) error {
 	sources := source.Snapshot{}
 	var lines [][]byte
 	var objs []map[string]any
-	for _, runtime := range runtimes {
+	for i, runtime := range runtimes {
 		plan, err := a.cat.Plan(opts.id, runtime)
 		if err != nil {
 			a.writeErr(err)
@@ -104,6 +105,9 @@ func (a *app) cmdBench(args []string) error {
 		}
 		if opts.metrics != nil {
 			plan.Params.Metrics = opts.metrics
+		}
+		if i == 0 {
+			a.warnUnsupportedMetrics(plan.Params.Metrics)
 		}
 		snapshot, err := source.Capture(a.root, plan)
 		if err != nil {
@@ -288,6 +292,22 @@ func parseBench(args []string) (benchOpts, error) {
 		}
 	}
 	return o, nil
+}
+
+// warnUnsupportedMetrics names requested metrics this platform's collector cannot report.
+func (a *app) warnUnsupportedMetrics(ids []string) {
+	if len(ids) == 0 {
+		ids = benchmark.DefaultMetrics
+	}
+	var unsupported []string
+	for _, id := range ids {
+		if !benchmark.MetricSupported(id, goruntime.GOOS) {
+			unsupported = append(unsupported, id)
+		}
+	}
+	if len(unsupported) > 0 {
+		a.warn("metrics unsupported on %s will be reported unavailable: %s", goruntime.GOOS, strings.Join(unsupported, " "))
+	}
 }
 
 func (o *benchOpts) addID(arg string) error {

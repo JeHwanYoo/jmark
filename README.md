@@ -49,16 +49,26 @@ just bench sum-large-doubles --metrics instructions,cpu_cycles,ipc
 
 CLI selection replaces project selection; project selection replaces defaults.
 Additional IDs: `user_time`, `system_time`, `cache_references`, `cache_misses`,
-`branch_misses`, and `cache_miss_rate`. Hardware support depends on OS, CPU and
-permissions. Missing metrics remain visible with an unavailable reason.
+`branch_misses`, and `cache_miss_rate`. Each metric is computed from hyperfine
+readings, and a metric is available when all of its readings are: macOS reports
+no cache or branch counters, and Windows reports no memory or hardware counters.
+`just doctor` lists what the current host collects. `bench` warns before running
+metrics the OS cannot report, and missing metrics remain visible with an
+unavailable reason (`unsupported_on_platform` or `not_reported_by_collector`).
 
 Reports have separate Workload and Metric selectors. The (?) next to Metric opens
-a guide in a separate tab with definitions and animated examples for all built-in
-metrics. The guide works offline and reads its text from `METRICS.md`. Peak RSS includes runtime
+a guide in a separate tab with definitions and animated examples. It lists the
+metrics in the report first, then the rest with their status on the report's
+host: available but not requested, unsupported on the OS, or not reported. The guide works offline and reads its text from `METRICS.md`. Peak RSS includes runtime
 startup and input generation; it is the median of process peak measurements,
 never bytes allocated per operation. One operation processes the entire input.
 See [METRICS.md](METRICS.md) for definitions, extension contracts and research.
 Results require schema version 2; previous saved formats are unsupported.
+
+In a report's Charts section, **Print / Save PDF** opens the browser print dialog
+for the currently filtered chart. Choose Save as PDF; the print layout uses A4
+portrait pages and splits large charts across pages with a shared axis scale.
+Browser print settings can override paper size and margins.
 
 ## Publish results
 

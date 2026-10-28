@@ -3,8 +3,11 @@ package main
 import (
 	"fmt"
 	"os/exec"
+	"runtime"
+	"sort"
 	"strings"
 
+	"github.com/JeHwanYoo/jmark/internal/benchmark"
 	"github.com/JeHwanYoo/jmark/internal/measure"
 )
 
@@ -28,6 +31,10 @@ func (a *app) cmdDoctor() error {
 	}
 	if !ok {
 		return fmt.Errorf("doctor: FAILED")
+	}
+	if err := a.doctorMetrics(); err != nil {
+		a.writeErr(err)
+		a.warn("could not check metric availability")
 	}
 	if err := a.cat.CheckRegistry(); err != nil {
 		a.writeErr(err)
@@ -102,6 +109,47 @@ func (a *app) cmdDoctor() error {
 		return fmt.Errorf("doctor: FAILED")
 	}
 	fmt.Fprintln(a.stdout, "doctor: OK")
+	return nil
+}
+
+// doctorMetrics reports which built-in metrics this host can collect and why the others are missing.
+func (a *app) doctorMetrics() error {
+	readings, err := measure.HostReadings()
+	if err != nil {
+		return err
+	}
+	reported := map[string]bool{}
+	for _, id := range readings {
+		reported[id] = true
+	}
+	fmt.Fprintf(a.stdout, "doctor: readings on this host: %s\n", strings.Join(readings, " "))
+	ids := make([]string, 0, len(benchmark.Metrics))
+	for id := range benchmark.Metrics {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	var available, unsupported, withheld []string
+	for _, id := range ids {
+		collected := true
+		for _, r := range benchmark.Metrics[id].Readings {
+			collected = collected && reported[r]
+		}
+		switch {
+		case collected:
+			available = append(available, id)
+		case !benchmark.MetricSupported(id, runtime.GOOS):
+			unsupported = append(unsupported, id)
+		default:
+			withheld = append(withheld, id)
+		}
+	}
+	fmt.Fprintf(a.stdout, "doctor: metrics available: %s\n", strings.Join(available, " "))
+	if len(unsupported) > 0 {
+		fmt.Fprintf(a.stdout, "doctor: metrics unsupported on %s: %s\n", runtime.GOOS, strings.Join(unsupported, " "))
+	}
+	if len(withheld) > 0 {
+		a.warn("metrics supported on %s but not reported (check counter permissions or virtualization): %s", runtime.GOOS, strings.Join(withheld, " "))
+	}
 	return nil
 }
 

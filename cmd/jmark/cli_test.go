@@ -39,12 +39,17 @@ func TestDoctorAndCatalogWithMissingRuntime(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	// The readings check exports one measurement that reports every collector reading.
+	fakeHyperfine := "#!/bin/sh\nwhile [ $# -gt 0 ]; do\n  if [ \"$1\" = --export-json ]; then\n    printf '%s' '" + allReadingsExport + "' > \"$2\"\n    exit 0\n  fi\n  shift\ndone\nprintf 'hyperfine 2.0.0\\n'\n"
+	if err := os.WriteFile(filepath.Join(bin, "hyperfine"), []byte(fakeHyperfine), 0755); err != nil {
+		t.Fatal(err)
+	}
 	t.Setenv("PATH", bin)
 	out, errOut, code := runOut(t, root, "doctor")
 	if code != 0 || errOut != "" {
 		t.Fatalf("exit %d: %s %s", code, out, errOut)
 	}
-	for _, line := range []string{"doctor: registry ok", "doctor: project ok demo (runtimes: available unavailable)", "doctor: runtime available (core) found", "doctor: runtime unavailable (core) missing: absent-engine", "doctor: OK"} {
+	for _, line := range []string{"doctor: metrics available: branch_misses cache_miss_rate cache_misses cache_references cpu_cycles cpu_time instructions ipc peak_rss system_time throughput user_time wall_time", "doctor: registry ok", "doctor: project ok demo (runtimes: available unavailable)", "doctor: runtime available (core) found", "doctor: runtime unavailable (core) missing: absent-engine", "doctor: OK"} {
 		if !strings.Contains(out, line+"\n") {
 			t.Errorf("missing %q in %s", line, out)
 		}
@@ -65,6 +70,8 @@ func TestDoctorAndCatalogWithMissingRuntime(t *testing.T) {
 		t.Fatalf("missing host: %d %q", code, errOut)
 	}
 }
+
+const allReadingsExport = `{"results":[{"measurements":[{"time_wall_clock":{"value":1},"time_cpu":{"value":1},"time_user":{"value":1},"time_system":{"value":0},"memory_peak_resident":{"value":1},"cpu_cycles":{"value":1},"instructions":{"value":1},"cache_references":{"value":1},"cache_misses":{"value":0},"branch_misses":{"value":0},"exit_code":0}]}]}`
 
 func TestCreateScaffold(t *testing.T) {
 	root := t.TempDir()

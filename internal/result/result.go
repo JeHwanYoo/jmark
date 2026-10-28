@@ -67,7 +67,7 @@ func Build(plan benchmark.Plan, observations benchmark.Measurement) (map[string]
 			stats[id] = map[string]any{"baseline": statistics(o.Baseline), "workload": statistics(o.Workload)}
 		}
 		for id, d := range definitions {
-			v, reason := metricValue(id, d, raw, float64(plan.Params.Iters))
+			v, reason := metricValue(d, raw, float64(plan.Params.Iters))
 			if reason != "" {
 				values[id] = benchmark.MetricResult{Status: "unavailable", Reason: reason}
 			} else {
@@ -93,10 +93,18 @@ func midpoint(xs []float64) float64 {
 	}
 	return (s[n/2-1] + s[n/2]) / 2
 }
+
+// missing separates readings the platform cannot report from ones withheld at collection time.
+func missing(source string) string {
+	if benchmark.ReadingKnown(source) && !benchmark.ReadingSupported(source, runtime.GOOS) {
+		return "unsupported_on_platform"
+	}
+	return "not_reported_by_collector"
+}
 func difference(raw map[string]benchmark.Observation, source string, n float64) (float64, string) {
 	o := raw[source]
 	if len(o.Baseline) == 0 || len(o.Workload) == 0 {
-		return 0, "not_reported_by_collector"
+		return 0, missing(source)
 	}
 	v := (midpoint(o.Workload) - midpoint(o.Baseline)) / n
 	if v < 0 || (v == 0 && strings.HasPrefix(source, "time_")) {
@@ -104,24 +112,20 @@ func difference(raw map[string]benchmark.Observation, source string, n float64) 
 	}
 	return v, ""
 }
-func metricValue(id string, d benchmark.MetricDefinition, raw map[string]benchmark.Observation, n float64) (float64, string) {
+func metricValue(d benchmark.MetricDefinition, raw map[string]benchmark.Observation, n float64) (float64, string) {
 	if d.Method == "workload_median" {
 		o := raw[d.Source]
 		if len(o.Workload) == 0 {
-			return 0, "not_reported_by_collector"
+			return 0, missing(d.Source)
 		}
 		return midpoint(o.Workload), ""
 	}
-	if id == "ipc" || id == "cache_miss_rate" {
-		a, b := "instructions", "cpu_cycles"
-		if id == "cache_miss_rate" {
-			a, b = "cache_misses", "cache_references"
-		}
-		x, e := difference(raw, a, n)
+	if d.Method == "ratio" {
+		x, e := difference(raw, d.Readings[0], n)
 		if e != "" {
 			return 0, e
 		}
-		y, e := difference(raw, b, n)
+		y, e := difference(raw, d.Readings[1], n)
 		if e != "" {
 			return 0, e
 		}

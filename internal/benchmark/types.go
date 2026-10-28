@@ -86,6 +86,8 @@ type MetricDefinition struct {
 	Method    string `json:"method"`
 	Scope     string `json:"scope"`
 	Source    string `json:"source,omitempty"`
+	// Readings are the collector values the metric is computed from.
+	Readings []string `json:"-"`
 }
 type Observation struct {
 	Baseline []float64 `json:"baseline"`
@@ -99,19 +101,78 @@ type MetricResult struct {
 
 var DefaultMetrics = []string{"wall_time", "cpu_time", "peak_rss", "throughput"}
 var Metrics = map[string]MetricDefinition{
-	"wall_time":        {"Wall time", "s/op", "lower", "difference_per_op", "operation", "time_wall_clock"},
-	"cpu_time":         {"CPU time", "s/op", "lower", "difference_per_op", "operation", "time_cpu"},
-	"user_time":        {"User CPU time", "s/op", "lower", "difference_per_op", "operation", "time_user"},
-	"system_time":      {"System CPU time", "s/op", "lower", "difference_per_op", "operation", "time_system"},
-	"peak_rss":         {"Peak RSS", "B", "lower", "workload_median", "process_peak", "memory_peak_resident"},
-	"throughput":       {"Throughput", "op/s", "higher", "inverse_wall_time", "operation", "time_wall_clock"},
-	"instructions":     {"Instructions", "instructions/op", "lower", "difference_per_op", "hardware", "instructions"},
-	"cpu_cycles":       {"CPU cycles", "cycles/op", "lower", "difference_per_op", "hardware", "cpu_cycles"},
-	"cache_references": {"Cache references", "references/op", "neutral", "difference_per_op", "hardware", "cache_references"},
-	"cache_misses":     {"Cache misses", "misses/op", "lower", "difference_per_op", "hardware", "cache_misses"},
-	"branch_misses":    {"Branch misses", "misses/op", "lower", "difference_per_op", "hardware", "branch_misses"},
-	"ipc":              {"IPC", "instructions/cycle", "neutral", "ratio", "hardware", ""},
-	"cache_miss_rate":  {"Cache miss rate", "ratio", "lower", "ratio", "hardware", ""},
+	"wall_time":        {"Wall time", "s/op", "lower", "difference_per_op", "operation", "time_wall_clock", []string{"time_wall_clock"}},
+	"cpu_time":         {"CPU time", "s/op", "lower", "difference_per_op", "operation", "time_cpu", []string{"time_cpu"}},
+	"user_time":        {"User CPU time", "s/op", "lower", "difference_per_op", "operation", "time_user", []string{"time_user"}},
+	"system_time":      {"System CPU time", "s/op", "lower", "difference_per_op", "operation", "time_system", []string{"time_system"}},
+	"peak_rss":         {"Peak RSS", "B", "lower", "workload_median", "process_peak", "memory_peak_resident", []string{"memory_peak_resident"}},
+	"throughput":       {"Throughput", "op/s", "higher", "inverse_wall_time", "operation", "time_wall_clock", []string{"time_wall_clock"}},
+	"instructions":     {"Instructions", "instructions/op", "lower", "difference_per_op", "hardware", "instructions", []string{"instructions"}},
+	"cpu_cycles":       {"CPU cycles", "cycles/op", "lower", "difference_per_op", "hardware", "cpu_cycles", []string{"cpu_cycles"}},
+	"cache_references": {"Cache references", "references/op", "neutral", "difference_per_op", "hardware", "cache_references", []string{"cache_references"}},
+	"cache_misses":     {"Cache misses", "misses/op", "lower", "difference_per_op", "hardware", "cache_misses", []string{"cache_misses"}},
+	"branch_misses":    {"Branch misses", "misses/op", "lower", "difference_per_op", "hardware", "branch_misses", []string{"branch_misses"}},
+	"ipc":              {"IPC", "instructions/cycle", "neutral", "ratio", "hardware", "", []string{"instructions", "cpu_cycles"}},
+	"cache_miss_rate":  {"Cache miss rate", "ratio", "lower", "ratio", "hardware", "", []string{"cache_misses", "cache_references"}},
+}
+
+// Reading is one raw value reported by hyperfine. Platforms follow hyperfine
+// 2.0's Metric::ensure_available (counters also need 64-bit Linux); permissions
+// and hardware can still withhold a supported reading, which only collection reveals.
+type Reading struct {
+	ID        string   `json:"id"`
+	Platforms []string `json:"platforms"`
+}
+
+var Readings = []Reading{
+	{"time_wall_clock", []string{"darwin", "linux", "windows"}},
+	{"time_cpu", []string{"darwin", "linux", "windows"}},
+	{"time_user", []string{"darwin", "linux", "windows"}},
+	{"time_system", []string{"darwin", "linux", "windows"}},
+	{"memory_peak_resident", []string{"darwin", "linux"}},
+	{"cpu_cycles", []string{"darwin", "linux"}},
+	{"instructions", []string{"darwin", "linux"}},
+	{"cache_references", []string{"linux"}},
+	{"cache_misses", []string{"linux"}},
+	{"branch_misses", []string{"linux"}},
+}
+
+// ReadingKnown reports whether id is a collector reading rather than a probe counter.
+func ReadingKnown(id string) bool {
+	for _, r := range Readings {
+		if r.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
+// ReadingSupported reports whether the collector can report id on goos.
+func ReadingSupported(id, goos string) bool {
+	for _, r := range Readings {
+		if r.ID == id {
+			for _, p := range r.Platforms {
+				if p == goos {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// MetricSupported reports whether every reading behind a built-in metric is supported on goos.
+func MetricSupported(id, goos string) bool {
+	d, ok := Metrics[id]
+	if !ok {
+		return false
+	}
+	for _, r := range d.Readings {
+		if !ReadingSupported(r, goos) {
+			return false
+		}
+	}
+	return true
 }
 
 // Result is the persisted contract. Metric identities are extensible data.
