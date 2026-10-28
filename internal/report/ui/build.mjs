@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 await build({
   entryPoints: ["src/main.js"],
   bundle: true,
-  loader: { ".svg": "dataurl" },
+  loader: { ".svg": "dataurl", ".woff2": "dataurl" },
   minify: true,
   format: "iife",
   outfile: "dist/app.js",
@@ -28,6 +28,15 @@ await build({
     },
   ],
 });
+
+// Include font licenses in the standalone CSS distributed with every report.
+const fontLicenses = await Promise.all(
+  ["inter", "jetbrains-mono"].map((font) =>
+    readFile(`node_modules/@fontsource-variable/${font}/LICENSE`, "utf8"),
+  ),
+);
+const css = await readFile("dist/app.css", "utf8");
+await writeFile("dist/app.css", `${css}\n/*! ${fontLicenses.join("\n\n")} */\n`);
 
 async function sourceFiles(directory) {
   const files = [];

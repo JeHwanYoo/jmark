@@ -87,6 +87,6 @@ Commit `mise.toml` and `mise.lock` together. To change versions, edit `mise.toml
 
 [ARCHITECTURE.md](ARCHITECTURE.md) describes the structure and data flow; [DESIGN.md](DESIGN.md) covers report UI standards.
 
-Reports use Svelte and ECharts. After editing `internal/report/ui/src/`, run `just ui-build` with Node.js and npm. Commit the lockfile and generated `internal/report/ui/dist/` assets; host tests verify their manifest against sources and assets. `bench` and `open` use the embedded UI without rebuilding it. Reports are standalone HTML and need no server or network.
+Reports use Svelte and ECharts. After editing `internal/report/ui/src/`, run `just ui-build` with Node.js and npm. Commit the lockfile and generated `internal/report/ui/dist/` assets; host tests verify their manifest against sources and assets. The report favicon is embedded from `internal/report/ui/src/assets/favicon.ico`; its matching vector source is `icon.svg`. `bench` and `open` use the embedded UI without rebuilding it. Reports are standalone HTML and need no server or network.
 
 `go test ./...` runs host and report fixture tests. `go test -tags live ./internal/measure` uses installed timer and runtime tools. Use `go test -race ./...` to check concurrent execution. `just doctor` checks tools, registry, project layouts, and probes.

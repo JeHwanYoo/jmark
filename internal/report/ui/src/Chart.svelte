@@ -18,15 +18,23 @@
   let chart = $state.raw();
   onMount(() => {
     chart = init(element, null, { renderer: "svg" });
+    document.fonts.ready.then(() => chart?.resize());
     const observer = new ResizeObserver(() => chart?.resize());
     observer.observe(element);
     return () => {
       observer.disconnect();
       chart.dispose();
+      chart = undefined;
     };
   });
   $effect(() => {
-    chart?.setOption(chartOption(rows, scale, axis, series, domain), true);
+    if (chart) {
+      const fontFamily = getComputedStyle(element).getPropertyValue("--font-ui").trim();
+      const option = chartOption(rows, scale, axis, series, domain);
+      option.textStyle = { fontFamily };
+      option.tooltip.textStyle = { fontFamily };
+      chart.setOption(option, true);
+    }
   });
 </script>
 

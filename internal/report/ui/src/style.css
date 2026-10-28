@@ -1,10 +1,7 @@
 :root {
-  font-family:
-    Inter,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    sans-serif;
+  --font-ui: "Inter Variable", sans-serif;
+  --font-code: "JetBrains Mono Variable", monospace;
+  font-family: var(--font-ui);
   color: #172033;
   background: #f5f7fa;
   font-synthesis: none;
@@ -154,9 +151,7 @@ button:disabled {
   gap: 12px;
 }
 .panel-heading span {
-  font:
-    11px ui-monospace,
-    monospace;
+  font: 11px var(--font-code);
   color: #7a8596;
 }
 h2 {
@@ -265,9 +260,7 @@ summary {
   flex-wrap: wrap;
 }
 .axis-unit {
-  font:
-    12px ui-monospace,
-    monospace;
+  font: 12px var(--font-code);
   color: #65748b;
   margin-left: auto;
   padding-bottom: 12px;
@@ -365,7 +358,7 @@ a:focus-visible {
   font-size: 13px;
   padding: 0;
   margin: 28px 0 12px;
-  font-family: ui-monospace, monospace;
+  font-family: var(--font-code);
 }
 .markdown pre {
   overflow-x: auto;
@@ -378,7 +371,7 @@ a:focus-visible {
   font-size: 13px;
 }
 .markdown code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-code);
 }
 @media (max-width: 600px) {
   .sources > :not(summary) {

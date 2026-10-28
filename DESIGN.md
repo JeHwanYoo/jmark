@@ -45,8 +45,11 @@ hero copy, or summary cards that compete with the measured results.
 
 ## Visual language
 
-Use a light, quiet interface with a system sans-serif font and tabular numerals.
-Use monospace sparingly for units and workload parameters. No remote font assets.
+Use the bundled Inter Variable font for UI text and chart labels, with tabular
+numerals. Use bundled JetBrains Mono Variable for units, workload parameters, and
+source code. Both use the SIL Open Font License 1.1; include their license notices
+in standalone reports. Fall back to system fonts for unsupported glyphs. No remote
+font assets.
 
 | Role | Value |
 | --- | --- |

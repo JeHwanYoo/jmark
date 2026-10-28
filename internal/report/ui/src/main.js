@@ -2,6 +2,10 @@ import { mount } from "svelte";
 import App from "./App.svelte";
 import Index from "./Index.svelte";
 import "highlight.js/styles/github.css";
+import "@fontsource-variable/inter/wght.css";
+import "@fontsource-variable/inter/wght-italic.css";
+import "@fontsource-variable/jetbrains-mono/wght.css";
+import "@fontsource-variable/jetbrains-mono/wght-italic.css";
 import "./style.css";
 const target = document.getElementById("app");
 try {

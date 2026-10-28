@@ -2,6 +2,7 @@ package report
 
 import (
 	_ "embed"
+	"encoding/base64"
 	"encoding/json"
 	"html"
 	"strings"
@@ -16,6 +17,9 @@ var appJS string
 //go:embed ui/dist/app.css
 var appCSS string
 
+//go:embed ui/src/assets/favicon.ico
+var favicon []byte
+
 func fillPageData(project, data, dataID string, options Options) string {
 	sources, _ := json.Marshal(options.Sources)
 	return strings.NewReplacer(
@@ -25,6 +29,7 @@ func fillPageData(project, data, dataID string, options Options) string {
 		"@@SOURCES@@", embedJSON(string(sources)),
 		"@@DATA@@", embedJSON(data),
 		"@@JS@@", strings.ReplaceAll(appJS, "</script", `<\/script`),
+		"@@FAVICON@@", base64.StdEncoding.EncodeToString(favicon),
 		"@@CSS@@", appCSS,
 	).Replace(pageHTML)
 }

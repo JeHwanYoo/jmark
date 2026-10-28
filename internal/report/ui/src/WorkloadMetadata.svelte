@@ -21,5 +21,5 @@
   }
   .workload-metadata > div { display: flex; gap: 8px; align-items: baseline; }
   dt { color: #65748b; }
-  dd { margin: 0; color: #172033; overflow-wrap: anywhere; font-family: ui-monospace, monospace; }
+  dd { margin: 0; color: #172033; overflow-wrap: anywhere; font-family: var(--font-code); }
 </style>
