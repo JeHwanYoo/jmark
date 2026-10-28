@@ -1,0 +1,4 @@
+n = 100000
+warmup = 20
+iters = 500
+runs = 10

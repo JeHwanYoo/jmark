@@ -1,0 +1,3 @@
+family = "js"
+needs = "node"
+run = "node {runner} {input} {approach} {n} {iters} {probe}"

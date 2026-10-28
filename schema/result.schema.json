@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jmark.local/schema/result.schema.json",
+  "title": "jmark benchmark result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "project",
+    "runtime",
+    "metric",
+    "results",
+    "meta"
+  ],
+  "properties": {
+    "project": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Benchmark project id (directory under benches/)"
+    },
+    "runtime": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Runtime id from runtimes/<id>.toml"
+    },
+    "metric": {
+      "type": "string",
+      "const": "us_per_op",
+      "description": "Wall time per op in microseconds, from the host external clock (hyperfine differential)"
+    },
+    "results": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "value",
+          "iters",
+          "sink"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "value": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "iters": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "total_ms": {
+            "type": "number",
+            "minimum": 0
+          },
+          "sink": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "n",
+        "warmup",
+        "iters"
+      ],
+      "properties": {
+        "n": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "warmup": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "iters": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "description": "Workload params plus host measurement keys (runs, clock, method, probes…)"
+    }
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "project": "golden",
+  "runtime": "node",
+  "metric": "us_per_op",
+  "results": [
+    {
+      "name": "a",
+      "value": 5000,
+      "iters": 100,
+      "total_ms": 500,
+      "sink": 42
+    },
+    {
+      "name": "b",
+      "value": 1250,
+      "iters": 100,
+      "total_ms": 125,
+      "sink": 42
+    }
+  ],
+  "meta": {
+    "n": 1000,
+    "warmup": 10,
+    "iters": 100,
+    "runs": 5,
+    "clock": "hyperfine",
+    "method": "differential-median",
+    "probe_method": "differential-snapshot",
+    "probes": {
+      "a": {
+        "gc_per_op": 0
+      },
+      "b": {
+        "gc_per_op": 0.12
+      }
+    },
+    "probes_unavailable": [
+      "alloc"
+    ]
+  }
+}

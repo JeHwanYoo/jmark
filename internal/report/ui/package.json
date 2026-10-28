@@ -1,0 +1,23 @@
+{
+  "name": "jmark-report",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "check": "svelte-check --fail-on-warnings",
+    "test": "node --test src/*.test.js"
+  },
+  "dependencies": {
+    "echarts": "^6.0.0",
+    "highlight.js": "^11.12.0",
+    "markdown-it": "^14.3.3",
+    "svelte": "^5.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "prettier": "^3.9.10",
+    "prettier-plugin-svelte": "^4.1.1",
+    "svelte-check": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}

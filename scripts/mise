@@ -1,0 +1,13 @@
+#!/bin/sh
+set -eu
+root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+export MISE_DATA_DIR="${JMARK_MISE_DATA_DIR:-$root/.jmark/mise-data}"
+export MISE_CACHE_DIR="$root/.jmark/mise-cache"
+export MISE_STATE_DIR="$root/.jmark/mise-state"
+export MISE_TRUSTED_CONFIG_PATHS="$root/mise.toml"
+if ! command -v mise >/dev/null 2>&1; then
+ echo 'jmark: mise is required; install it from https://mise.jdx.dev/installing-mise.html' >&2
+ exit 1
+fi
+cd "$root"
+exec mise "$@"

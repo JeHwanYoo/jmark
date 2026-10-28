@@ -1,0 +1,33 @@
+# Runtime installations, downloads, builds, and generated site
+/.jmark/
+
+# Local audit notes and verification evidence
+/.audit/
+/.cursor/skills/verify-jmark/artifacts/
+
+# Benchmark results: keep completed public runs in Git
+/artifacts/*
+!/artifacts/public/
+/artifacts/public/**/.pending-*/
+
+# Machine-specific mise overrides; commit mise.toml and mise.lock
+/mise.local.toml
+/mise.local.lock
+/mise.*.local.toml
+/mise.*.local.lock
+
+# UI dependencies; ui/dist is embedded in the Go binary and must be committed
+node_modules/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# Local Go test binaries and coverage output
+*.test
+/coverage.out
+/coverage.html
+
+# Scratch / OS
+*.tmp
+.DS_Store

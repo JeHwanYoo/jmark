@@ -1,0 +1,39 @@
+<script>
+  import { onMount } from "svelte";
+  import { init, use } from "echarts/core";
+  import { BarChart, ScatterChart } from "echarts/charts";
+  import { GridComponent, TooltipComponent } from "echarts/components";
+  import { SVGRenderer } from "echarts/renderers";
+  import { chartOption, chartData } from "./model.js";
+  use([BarChart, ScatterChart, GridComponent, TooltipComponent, SVGRenderer]);
+  let { rows, scale, axis, series, domain } = $props();
+  const layout = $derived(chartData(rows, axis, series));
+  const height = $derived(
+    Math.max(
+      280,
+      layout.categories.length * (layout.seriesNames.length * 32 + 24) + 80,
+    ),
+  );
+  let element;
+  let chart = $state.raw();
+  onMount(() => {
+    chart = init(element, null, { renderer: "svg" });
+    const observer = new ResizeObserver(() => chart?.resize());
+    observer.observe(element);
+    return () => {
+      observer.disconnect();
+      chart.dispose();
+    };
+  });
+  $effect(() => {
+    chart?.setOption(chartOption(rows, scale, axis, series, domain), true);
+  });
+</script>
+
+<div
+  class="chart"
+  bind:this={element}
+  style:height={`${height}px`}
+  role="img"
+  aria-label="Benchmark comparison chart"
+></div>
