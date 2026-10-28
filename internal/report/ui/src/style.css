@@ -338,15 +338,6 @@ a:focus-visible {
 .sources > :not(summary) {
   margin: 16px 24px 24px;
 }
-.sources-heading {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 16px;
-}
-.sources-heading button {
-  min-height: 44px;
-  padding: 10px 14px;
-}
 .markdown {
   overflow-wrap: anywhere;
 }
@@ -428,42 +419,34 @@ a:focus-visible {
   }
 }
 
+.export-button {
+  flex: none;
+  min-height: 40px;
+  padding: 9px 16px;
+  font-weight: 600;
+}
+@media (max-width: 600px) {
+  .export-button {
+    min-height: 44px;
+  }
+}
+
 .print-document {
   position: fixed;
   left: -10000px;
   top: 0;
   width: 186mm;
-  color: #172033;
   background: white;
-}
-.print-page h1 {
-  font-size: 22px;
-  margin: 0 0 10px;
-}
-.print-brand, .print-meta, .print-footer {
-  font-size: 11px;
-  color: #526078;
-  overflow-wrap: anywhere;
-}
-.print-brand {
-  font-weight: 650;
-  margin: 0 0 16px;
-}
-.print-meta {
-  margin: 0 0 8px;
-}
-.print-page .legend {
-  margin: 16px 0 0;
-}
-.print-footer {
-  text-align: right;
 }
 @page {
   size: A4 portrait;
   margin: 12mm;
 }
 @media print {
-  #app:has(.print-document) > header, #app:has(.print-document) > main {
+  :root {
+    background: #fff;
+  }
+  #app:has(.print-document) > :not(.print-document) {
     display: none;
   }
   .print-document {
@@ -471,11 +454,5 @@ a:focus-visible {
     width: auto;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
-  }
-  .print-page {
-    break-after: page;
-  }
-  .print-page:last-child {
-    break-after: auto;
   }
 }

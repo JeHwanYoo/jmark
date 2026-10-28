@@ -101,7 +101,7 @@ alongside the chart. Never communicate selection or meaning through color alone.
 ## UI copy
 
 Use short functional labels: Workload, Runtime, Run, Sort, Y axis, Series,
-Linear, Log, Results, Environment. Keep the UI language consistent (English).
+Linear, Log, Results, Environment, Export. Keep the UI language consistent (English).
 Show only useful empty/error states and measurement context. Do not insert agent
 prompts, implementation notes, marketing language, or paragraphs describing what
 the interface already makes apparent. Put build instructions in documentation.
@@ -139,9 +139,20 @@ on browser history.
 
 Source code follows the result and environment sections. Render the saved Markdown
 snapshot with syntax highlighting, readable monospace text, and horizontal scrolling
-inside code blocks. Provide a Markdown download. Show “Source snapshot unavailable”
+inside code blocks. Show “Source snapshot unavailable”
 when a saved run has no snapshot. Current working files must not replace missing
 historical code. Raw Markdown HTML and remote images are disabled.
+
+## Export
+
+One Export button beside the project heading is the only output entry point; do
+not add print or download buttons to individual sections. It opens a modal with
+Format (PDF / Print or Markdown), Chart, Environment and Source code selectors and a
+live A4 preview. Results are always included. Exports follow the active filters,
+metric, scale, axis and series. PDF output is a compact A4 portrait report: charts
+split by category so each part fits a page, table rows and environment entries never
+break across pages, and source code wraps instead of scrolling. Markdown output
+omits the chart.
 
 ## Metric presentation
 

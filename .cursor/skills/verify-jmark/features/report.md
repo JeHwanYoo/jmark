@@ -34,6 +34,13 @@ pivot Approach/Runtime/Run, and confirm remaining dimensions and duplicate rows
 remain distinct. Exercise Arrow keys, Home/End, Enter, Escape, Tab, no matches,
 and outside dismissal in SearchSelect. Follow the root DESIGN.md standards.
 
+## Export checks
+
+Open Export beside the heading. Toggle Format, Chart, Environment and Source code and
+confirm the preview follows. Print to PDF and require A4 pages with no clipped chart,
+split table rows, or horizontally cut code. Download Markdown and confirm the same
+sections and table values.
+
 ## Metric guide checks
 
 Use the (?) link beside Metric. Require a separate tab for the selected metric,
