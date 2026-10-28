@@ -24,22 +24,6 @@ header {
   justify-content: space-between;
   padding: 0 max(24px, calc((100vw - 1160px) / 2));
 }
-.brand {
-  font-size: 25px;
-  font-weight: 750;
-  letter-spacing: -1px;
-  text-decoration: none;
-  color: inherit;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-.brand-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #2563eb;
-}
 .muted {
   color: #69768a;
   font-size: 13px;
@@ -113,20 +97,10 @@ button:disabled {
   opacity: 0.4;
   cursor: default;
 }
-.workload {
-  margin-right: auto;
-  font:
-    13px ui-monospace,
-    monospace;
-  align-self: center;
-}
-.workload span {
-  color: #a5afbd;
-  margin: 0 12px;
-}
 .scale {
   display: flex;
-  margin-left: auto;
+  height: 40px;
+  flex: none;
   gap: 2px;
   background: #e9edf4;
   padding: 3px;
@@ -135,7 +109,8 @@ button:disabled {
 .scale button {
   background: none;
   border-color: transparent;
-  padding: 7px 13px;
+  padding: 0 13px;
+  line-height: 20px;
 }
 .scale .active {
   background: #fff;
@@ -264,11 +239,8 @@ summary {
   .filters {
     gap: 12px;
   }
-  .workload {
-    width: 100%;
-  }
   .scale {
-    margin-left: 0;
+    height: 46px;
   }
   .panel-heading {
     padding: 18px 16px 0;

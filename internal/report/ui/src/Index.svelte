@@ -1,4 +1,5 @@
 <script>
+  import Brand from "./Brand.svelte";
   import RepositoryLink from "./RepositoryLink.svelte";
   let { runs } = $props();
   let query = $state("");
@@ -13,7 +14,7 @@
 
 <svelte:head><title>jmark · Results</title></svelte:head>
 <header>
-  <span class="brand">jmark<span class="brand-dot"></span></span>
+  <Brand />
   <RepositoryLink />
 </header>
 <main>

@@ -241,3 +241,18 @@ func TestLegacyHostnameIsNotExported(t *testing.T) {
 		}
 	}
 }
+
+func TestWorkloadMetadataProjection(t *testing.T) {
+	raw := []byte(`{"project":"demo","runtime":"node","metric":"throughput","meta":{"parameters":{"size":64,"distribution":"uniform"},"unit":"items/s"},"results":[{"name":"loop","value":20}]}`)
+	rows, _, err := flatten(raw, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var row map[string]any
+	if err := json.Unmarshal(rows[0], &row); err != nil {
+		t.Fatal(err)
+	}
+	if row["unit"] != "items/s" || row["parameters"].(map[string]any)["size"] != float64(64) {
+		t.Fatalf("metadata lost: %s", rows[0])
+	}
+}

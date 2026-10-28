@@ -343,3 +343,9 @@ repository does not contain an automated browser interaction suite.
 | CLI and terminal actions | `cmd/jmark/` |
 | Report data projection | `internal/report/` |
 | Chart and interaction behavior | `internal/report/ui/src/`, followed by a frontend build |
+
+Report workload metadata uses optional `meta.parameters` (a parameter-name/value
+object) and `meta.unit` (a display unit). Older results fall back to `meta.n`
+and the metric's unit. Parameter values and units participate in workload
+grouping so incompatible results stay separate. This presentation contract does
+not change the current runner's `n` input or its `us_per_op` measurement.

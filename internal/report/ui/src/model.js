@@ -6,18 +6,29 @@ export const colors = [
   "#db2777",
   "#475569",
 ];
-export const unit = (metric) => (metric === "us_per_op" ? "µs/op" : metric);
+export const unit = (row) => {
+  const metric = typeof row === "string" ? row : row?.metric;
+  return (typeof row === "object" && row?.unit) ||
+    (metric === "us_per_op" ? "µs/op" : metric) || "—";
+};
+export function parameters(row) {
+  const values = row?.parameters ?? (row?.n != null ? { n: row.n } : {});
+  return Object.entries(values).sort(([a], [b]) => a.localeCompare(b));
+}
+export const parameterValue = (value) =>
+  typeof value === "object" ? JSON.stringify(value) : String(value);
+
 export const format = (value) =>
   Number.isFinite(value)
     ? new Intl.NumberFormat("en", { maximumSignificantDigits: 5 }).format(value)
     : "—";
 export const conditionKey = (r) =>
-  JSON.stringify([r.project, r.metric, r.n, r.warmup, r.iters_meta, r.runs]);
+  JSON.stringify([r.project, r.metric, unit(r), parameters(r), r.warmup, r.iters_meta, r.runs]);
 export function conditions(rows) {
   return [...new Map(rows.map((r) => [conditionKey(r), r])).entries()].map(
     ([key, r]) => ({
       key,
-      label: `${r.project} · ${unit(r.metric)} · n=${r.n ?? "—"} · warmup=${r.warmup ?? "—"} · iters=${r.iters_meta ?? "—"} · runs=${r.runs ?? "—"}`,
+      label: `${r.project} · ${unit(r)}${parameters(r).map(([key, value]) => ` · ${key}=${parameterValue(value)}`).join("")} · warmup=${r.warmup ?? "—"} · iters=${r.iters_meta ?? "—"} · runs=${r.runs ?? "—"}`,
     }),
   );
 }
@@ -82,11 +93,11 @@ export function chartOption(
       trigger: "item",
       renderMode: "richText",
       formatter: (p) =>
-        `${[p.data.row.name, p.data.row.runtime, p.data.row.run].filter(Boolean).join(" · ")}\n${format(p.data.row.value)} ${unit(p.data.row.metric)}`,
+        `${[p.data.row.name, p.data.row.runtime, p.data.row.run].filter(Boolean).join(" · ")}\n${format(p.data.row.value)} ${unit(p.data.row)}`,
     },
     xAxis: {
       type: logarithmic ? "log" : "value",
-      name: unit(rows[0]?.metric),
+      name: unit(rows[0]),
       nameLocation: "end",
       splitNumber: 4,
       axisLabel: { hideOverlap: true },

@@ -211,6 +211,12 @@ func flattenDoc(doc map[string]json.RawMessage, run string) ([][]byte, error) {
 			project, runtime, metric, name, value, iters, total, sink,
 			n, warmup, itersMeta, runs, captured, runtimeVersion, host,
 		}
+		for _, key := range []string{"parameters", "unit"} {
+			if raw, ok := meta[key]; ok {
+				keys = append(keys, key)
+				vals = append(vals, raw)
+			}
+		}
 		if run != "" {
 			keys = append([]string{"run"}, keys...)
 			vals = append([]json.RawMessage{jsonString(run)}, vals...)

@@ -1,11 +1,14 @@
 <script>
+  import Brand from "./Brand.svelte";
   import RepositoryLink from "./RepositoryLink.svelte";
+  import WorkloadMetadata from "./WorkloadMetadata.svelte";
   import Sources from "./Sources.svelte";
   import Chart from "./Chart.svelte";
   import SearchSelect from "./SearchSelect.svelte";
   import {
     colors,
     conditions,
+    conditionKey,
     selectRows,
     format,
     unit,
@@ -75,7 +78,7 @@
         href={indexHref}
         aria-label="Back to index"
         title="Back to index">←</a
-      >{/if}<span class="brand">jmark<span class="brand-dot"></span></span>
+      >{/if}<Brand />
   </div>
   <RepositoryLink />
 </header>
@@ -87,7 +90,6 @@
       </p>
       <h1>{filtered[0]?.project ?? rows[0]?.project ?? "Results"}</h1>
     </div>
-    <span class="count">{filtered.length} results</span>
   </div>
   {#if rows.length}
     <div class="filters">
@@ -102,10 +104,6 @@
           }))}
           bind:value={selected}
         />
-      {:else}
-        <span class="workload"
-          >n = {rows[0].n ?? "—"} <span>·</span> {unit(rows[0].metric)}</span
-        >
       {/if}
       <SearchSelect
         id="runtime"
@@ -149,6 +147,7 @@
         >
       </div>
     </div>
+    <WorkloadMetadata row={rows.find((row) => conditionKey(row) === condition)} />
     {#if filtered.length}
       <details class="panel report-section comparison" open>
         <summary>Charts</summary>
@@ -165,7 +164,7 @@
             options={seriesOptions}
             bind:value={() => activeSeries, (next) => (series = next)}
           />
-          <span class="axis-unit">X axis · {unit(filtered[0].metric)}</span>
+          <span class="axis-unit">X axis · {unit(filtered[0])}</span>
         </div>
         <div class="legend">
           {#each legend as name}<span
@@ -190,7 +189,7 @@
               ><tr
                 >{#if runs.length}<th>Run</th>{/if}<th>Runtime</th><th
                   >Approach</th
-                ><th class="number">{unit(filtered[0].metric)}</th><th
+                ><th class="number">{unit(filtered[0])}</th><th
                   class="number">Total ms</th
                 ><th class="number">Iterations</th></tr
               ></thead
@@ -220,7 +219,7 @@
                 .join(" · ")}
             </p>
             <p>
-              {row.captured_at ?? "—"} · n={row.n ?? "—"} · warmup={row.warmup ??
+              {row.captured_at ?? "—"} · warmup={row.warmup ??
                 "—"} · iters={row.iters_meta ?? "—"} · runs={row.runs ?? "—"}
             </p>
           </div>{/each}

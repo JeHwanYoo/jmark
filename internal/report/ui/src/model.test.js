@@ -84,3 +84,17 @@ test("remaining dimensions and duplicates are preserved without constant run noi
   const pivot = chartOption(rows, "linear", "run", "name");
   assert.equal(pivot.series.flatMap((s) => s.data).length, 3);
 });
+
+test("workload metadata supports arbitrary parameters and units", () => {
+  const first = { ...base, metric: "throughput", unit: "items/s", parameters: { size: 64, distribution: "uniform" } };
+  const reordered = { ...first, parameters: { distribution: "uniform", size: 64 } };
+  const larger = { ...first, parameters: { size: 128, distribution: "uniform" } };
+  const otherUnit = { ...first, unit: "MB/s" };
+  const groups = conditions([first, reordered, larger, otherUnit]);
+  assert.equal(groups.length, 3);
+  assert.deepEqual(selectRows([first, reordered, larger], groups[0].key, "", ""), [first, reordered]);
+  assert.match(groups[0].label, /size=64/);
+  assert.doesNotMatch(groups[0].label, /n=100/);
+  assert.equal(chartOption([first], "linear").xAxis.name, "items/s");
+  assert.match(chartOption([first], "linear").tooltip.formatter({data: {row: first}}), /items\/s/);
+});
