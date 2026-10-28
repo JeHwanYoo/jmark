@@ -35,7 +35,7 @@ func TestDoctorAndCatalogWithMissingRuntime(t *testing.T) {
 	})
 	bin := t.TempDir()
 	for _, name := range []string{"just", "bash", "hyperfine", "mise", "engine"} {
-		if err := os.WriteFile(filepath.Join(bin, name), []byte("#!/bin/sh\nprintf 'fixture 1.0\\n'\n"), 0755); err != nil {
+		if err := os.WriteFile(filepath.Join(bin, name), []byte("#!/bin/sh\nprintf 'hyperfine 2.0.0\\n'\n"), 0755); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -187,21 +187,11 @@ func TestWhitespaceRoot(t *testing.T) {
 func TestWriteArtifactsHTML(t *testing.T) {
 	root := t.TempDir()
 	a := &app{root: root, stdout: os.Stdout, stderr: os.Stderr}
-	obj := map[string]any{
-		"project": "demo",
-		"runtime": "node",
-		"metric":  "us_per_op",
-		"results": []any{map[string]any{"name": "a", "value": float64(1.5), "iters": float64(1), "total_ms": float64(1), "sink": float64(3)}},
-		"meta": map[string]any{
-			"captured_at": "2026-10-27T00:00:00Z",
-			"runtime":     "v1",
-			"host":        json.RawMessage(`{"os":"Darwin","arch":"arm64"}`),
-			"n":           float64(1),
-			"warmup":      float64(0),
-			"iters":       float64(1),
-			"runs":        float64(1),
-		},
-	}
+	var obj map[string]any
+	_ = json.Unmarshal([]byte(`{"schema_version":2,"project":"demo","runtime":"node","workload":{"parameters":{"n":1},"warmup":0,"iters":1,"runs":1},"metrics":{"us_per_op":{"label":"Wall time","unit":"\u00b5s/op","direction":"lower","method":"difference_per_op","scope":"operation"}},"results":[{"name":"a","sink":3,"metrics":{"us_per_op":{"status":"ok","value":1.5}},"observations":{},"statistics":{}}],"meta":{}}`), &obj)
+	obj["meta"].(map[string]any)["host"] = map[string]any{"os": "Darwin", "arch": "arm64"}
+	obj["meta"].(map[string]any)["runtime"] = "v1"
+	obj["meta"].(map[string]any)["captured_at"] = "2026-10-27T00:00:00Z"
 	line, err := marshalCompact(obj)
 	if err != nil {
 		t.Fatal(err)
@@ -318,6 +308,20 @@ func writeRepo(t *testing.T, root string, files map[string]string) {
 		}
 		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
 			t.Fatal(err)
+		}
+	}
+}
+
+func TestMetricSelection(t *testing.T) {
+	for _, args := range [][]string{{"demo", "--metrics", "peak_rss"}, {"demo", "--metrics=wall_time,throughput"}} {
+		o, e := parseBench(args)
+		if e != nil || len(o.metrics) == 0 {
+			t.Fatalf("%v: %v", args, e)
+		}
+	}
+	for _, args := range [][]string{{"demo", "--metrics"}, {"demo", "--metrics="}, {"demo", "--metrics", "unknown"}, {"demo", "--metrics=peak_rss", "--metrics=wall_time"}} {
+		if _, e := parseBench(args); e == nil {
+			t.Fatalf("accepted %v", args)
 		}
 	}
 }

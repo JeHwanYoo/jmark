@@ -11,7 +11,7 @@ import (
 	"github.com/JeHwanYoo/jmark/internal/catalog"
 )
 
-const sampleResult = `{"project":"demo","runtime":"node","metric":"us_per_op","results":[{"name":"loop","value":1.5,"iters":1,"total_ms":1,"sink":1}],"meta":{"n":1,"warmup":0,"iters":1,"runs":1,"captured_at":"2026-10-27T00:00:00Z","runtime":"v1","host":{"os":"Darwin"}}}` + "\n"
+const sampleResult = `{"schema_version":2,"project":"demo","runtime":"node","workload":{"parameters":{"n":1},"warmup":0,"iters":1,"runs":1},"metrics":{"us_per_op":{"label":"Wall time","unit":"µs/op","direction":"lower","method":"difference_per_op","scope":"operation"}},"results":[{"name":"loop","sink":1,"metrics":{"us_per_op":{"status":"ok","value":1.5}},"observations":{},"statistics":{}}],"meta":{"n":1,"warmup":0,"iters":1,"runs":1,"captured_at":"2026-10-27T00:00:00Z","runtime":"v1","host":{"os":"Darwin"}}}` + "\n"
 
 func TestSplitExpect(t *testing.T) {
 	key, lines := splitExpect("\nfoo\n")

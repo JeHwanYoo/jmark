@@ -73,17 +73,15 @@ func BuildSite(root string) (string, error) {
 			}
 			var doc struct {
 				Runtime string `json:"runtime"`
-				Lang    string `json:"lang"`
-				Meta    struct {
+
+				Meta struct {
 					Captured string `json:"captured_at"`
 				} `json:"meta"`
 			}
 			if err := json.Unmarshal(scanner.Bytes(), &doc); err != nil {
 				return "", err
 			}
-			if doc.Runtime == "" {
-				doc.Runtime = doc.Lang
-			}
+
 			if !seen[doc.Runtime] {
 				entry.Runtimes = append(entry.Runtimes, doc.Runtime)
 				seen[doc.Runtime] = true

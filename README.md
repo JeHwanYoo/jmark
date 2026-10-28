@@ -1,6 +1,6 @@
 # jmark
 
-Run the same micro-benchmark across runtimes and compare µs/op.
+Run the same micro-benchmark across runtimes and compare time, memory, throughput, and optional hardware counters.
 
 ## Requirements
 
@@ -8,7 +8,7 @@ macOS or Linux with:
 
 - [just](https://github.com/casey/just)
 - [Go](https://go.dev) 1.26.4+
-- [hyperfine](https://github.com/sharkdp/hyperfine)
+- [hyperfine](https://github.com/sharkdp/hyperfine) 2.0.0+
 - [mise](https://mise.jdx.dev/installing-mise.html)
 
 Benchmark runtimes are installed automatically through mise.
@@ -36,6 +36,29 @@ Pass an ID in scripts; omit it in a terminal to pick the project, runtime, and f
 just open [<id>]         # Tab to multi-select; Enter = compare, Ctrl-X = delete
 just delete [<id>]       # Tab to multi-select; confirm with y
 ```
+
+## Metrics
+
+Default metrics are `wall_time`, `cpu_time`, `peak_rss`, and `throughput`.
+Set `metrics = "wall_time peak_rss"` in `bench.toml`, or override it for one run:
+
+```bash
+just bench sum-large-doubles --metrics wall_time,peak_rss
+just bench sum-large-doubles --metrics instructions,cpu_cycles,ipc
+```
+
+CLI selection replaces project selection; project selection replaces defaults.
+Additional IDs: `user_time`, `system_time`, `cache_references`, `cache_misses`,
+`branch_misses`, and `cache_miss_rate`. Hardware support depends on OS, CPU and
+permissions. Missing metrics remain visible with an unavailable reason.
+
+Reports have separate Workload and Metric selectors. The (?) next to Metric opens
+a guide in a separate tab with definitions and animated examples for all built-in
+metrics. The guide works offline and reads its text from `METRICS.md`. Peak RSS includes runtime
+startup and input generation; it is the median of process peak measurements,
+never bytes allocated per operation. One operation processes the entire input.
+See [METRICS.md](METRICS.md) for definitions, extension contracts and research.
+Results require schema version 2; previous saved formats are unsupported.
 
 ## Publish results
 
@@ -87,6 +110,6 @@ Commit `mise.toml` and `mise.lock` together. To change versions, edit `mise.toml
 
 [ARCHITECTURE.md](ARCHITECTURE.md) describes the structure and data flow; [DESIGN.md](DESIGN.md) covers report UI standards.
 
-Reports use Svelte and ECharts. After editing `internal/report/ui/src/`, run `just ui-build` with Node.js and npm. Commit the lockfile and generated `internal/report/ui/dist/` assets; host tests verify their manifest against sources and assets. The report favicon is embedded from `internal/report/ui/src/assets/favicon.ico`; its matching vector source is `icon.svg`. `bench` and `open` use the embedded UI without rebuilding it. Reports are standalone HTML and need no server or network.
+Reports use Svelte and ECharts. After editing `internal/report/ui/src/` or `METRICS.md`, run `just ui-build` with Node.js and npm. Commit the lockfile and generated `internal/report/ui/dist/` assets; host tests verify their manifest against sources and assets. The report favicon is embedded from `internal/report/ui/src/assets/favicon.ico`; its matching vector source is `icon.svg`. `bench` and `open` use the embedded UI without rebuilding it. Reports are standalone HTML and need no server or network.
 
 `go test ./...` runs host and report fixture tests. `go test -tags live ./internal/measure` uses installed timer and runtime tools. Use `go test -race ./...` to check concurrent execution. `just doctor` checks tools, registry, project layouts, and probes.

@@ -1,126 +1,90 @@
 package measure
 
 import (
-	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"github.com/JeHwanYoo/jmark/internal/benchmark"
+	"math"
 	"strconv"
+	"strings"
 )
 
-type hfExport struct {
-	Results []hfResult `json:"results"`
-}
-
-type hfResult struct {
-	Median     json.RawMessage `json:"median"`
-	Summary    *hfSummary      `json:"summary"`
-	Parameters hfParameters    `json:"parameters"`
-}
-
-type hfSummary struct {
-	Wall *hfStat `json:"time_wall_clock"`
-}
-
-type hfStat struct {
-	Median json.RawMessage `json:"median"`
-}
-
-type hfParameters struct {
-	Iters json.RawMessage `json:"iters"`
-}
-
-func parseHyperfine(data []byte, lo, hi int) (float64, float64, error) {
-	var exp hfExport
-	if err := json.Unmarshal(data, &exp); err != nil {
-		return 0, 0, fmt.Errorf("hyperfine export: %w", err)
+// parseObservations retains every execution rather than discarding distributions.
+func parseObservations(data []byte, lo, hi int) (map[string]benchmark.Observation, error) {
+	var export struct {
+		Version int `json:"schema_version"`
+		Results []struct {
+			Parameters map[string]struct {
+				Value string `json:"value"`
+			} `json:"parameters"`
+			Measurements []map[string]json.RawMessage `json:"measurements"`
+		} `json:"results"`
 	}
-	loKey := strconv.Itoa(lo)
-	hiKey := strconv.Itoa(hi)
-	var loVals, hiVals []float64
-	for _, r := range exp.Results {
-		it, ok := itersString(r.Parameters.Iters)
-		if !ok || (it != loKey && it != hiKey) {
+	if err := json.Unmarshal(data, &export); err != nil {
+		return nil, err
+	}
+	if export.Version != 2 {
+		return nil, fmt.Errorf("hyperfine export schema 2 required (install hyperfine >=2.0.0)")
+	}
+	out := map[string]benchmark.Observation{}
+	seen := map[int]bool{}
+	for _, group := range export.Results {
+		k, err := strconv.Atoi(group.Parameters["iters"].Value)
+		if err != nil || (k != lo && k != hi) {
 			continue
 		}
-		med, err := pickMedian(r)
-		if err != nil {
-			return 0, 0, err
+		if seen[k] {
+			return nil, fmt.Errorf("duplicate iters=%d", k)
 		}
-		if it == loKey {
-			loVals = append(loVals, med)
+		seen[k] = true
+		if len(group.Measurements) == 0 {
+			return nil, fmt.Errorf("empty measurements at iters=%d", k)
 		}
-		if it == hiKey {
-			hiVals = append(hiVals, med)
+		for _, run := range group.Measurements {
+			for id, raw := range run {
+				if id == "exit_code" {
+					var code int
+					if err := json.Unmarshal(raw, &code); err != nil || code != 0 {
+						return nil, fmt.Errorf("runner failed")
+					}
+					continue
+				}
+				var reading struct {
+					Value *float64 `json:"value"`
+					Unit  string   `json:"unit"`
+				}
+				if err := json.Unmarshal(raw, &reading); err != nil {
+					return nil, err
+				}
+				if reading.Value == nil {
+					continue
+				}
+				if strings.HasPrefix(id, "time_") && reading.Unit != "second" {
+					return nil, fmt.Errorf("unexpected unit for %s", id)
+				}
+				if id == "memory_peak_resident" && reading.Unit != "byte" {
+					return nil, fmt.Errorf("unexpected RSS unit")
+				}
+				value := *reading.Value
+				if math.IsNaN(value) || math.IsInf(value, 0) || value < 0 {
+					return nil, fmt.Errorf("invalid %s sample", id)
+				}
+				o := out[id]
+				if k == lo {
+					o.Baseline = append(o.Baseline, value)
+				}
+				if k == hi {
+					o.Workload = append(o.Workload, value)
+				}
+				out[id] = o
+			}
 		}
 	}
-	if len(loVals) != 1 || len(hiVals) != 1 {
-		return 0, 0, fmt.Errorf("hyperfine export missing iters=%d or iters=%d", lo, hi)
+	if !seen[lo] || !seen[hi] {
+		return nil, fmt.Errorf("missing iters=%d or iters=%d", lo, hi)
 	}
-	return loVals[0], hiVals[0], nil
-}
-
-func pickMedian(r hfResult) (float64, error) {
-	raw := medianRaw(r.Summary)
-	if !present(raw) {
-		raw = r.Median
+	if len(out["time_wall_clock"].Baseline) == 0 || len(out["time_wall_clock"].Workload) == 0 {
+		return nil, fmt.Errorf("missing wall clock samples")
 	}
-	if !present(raw) {
-		return 0, errors.New("hyperfine export has no wall-clock median")
-	}
-	var f float64
-	if err := json.Unmarshal(raw, &f); err != nil {
-		return 0, errors.New("hyperfine export has no wall-clock median")
-	}
-	return f, nil
-}
-
-func medianRaw(s *hfSummary) json.RawMessage {
-	if s == nil || s.Wall == nil {
-		return nil
-	}
-	return s.Wall.Median
-}
-
-func present(raw json.RawMessage) bool {
-	raw = bytes.TrimSpace(raw)
-	return len(raw) > 0 && !bytes.Equal(raw, []byte("null"))
-}
-
-func itersString(raw json.RawMessage) (string, bool) {
-	raw = bytes.TrimSpace(raw)
-	if len(raw) == 0 || bytes.Equal(raw, []byte("null")) {
-		return "", false
-	}
-	if raw[0] == '{' {
-		var obj struct {
-			Value json.RawMessage `json:"value"`
-		}
-		if err := json.Unmarshal(raw, &obj); err != nil {
-			return "", false
-		}
-		return scalarString(obj.Value)
-	}
-	return scalarString(raw)
-}
-
-func scalarString(raw json.RawMessage) (string, bool) {
-	raw = bytes.TrimSpace(raw)
-	if len(raw) == 0 || bytes.Equal(raw, []byte("null")) {
-		return "", false
-	}
-	if raw[0] == '"' {
-		var s string
-		if err := json.Unmarshal(raw, &s); err != nil {
-			return "", false
-		}
-		return s, true
-	}
-	dec := json.NewDecoder(bytes.NewReader(raw))
-	dec.UseNumber()
-	var n json.Number
-	if err := dec.Decode(&n); err != nil {
-		return "", false
-	}
-	return n.String(), true
+	return out, nil
 }

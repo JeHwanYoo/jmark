@@ -27,7 +27,7 @@ func TestLiveSumLargeDoublesNode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("plan: %v\nstderr: %s", err, stderr.String())
 	}
-	lines := sampleLines(observations.Samples)
+	lines := sampleLines(observations.Approaches)
 	if len(lines) != len(doc.Approaches) || len(lines) != 2 {
 		t.Fatalf("lines %#v approaches %d", lines, len(doc.Approaches))
 	}

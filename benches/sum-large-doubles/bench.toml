@@ -2,3 +2,4 @@ n = 100000
 warmup = 20
 iters = 500
 runs = 10
+metrics = "wall_time cpu_time peak_rss throughput"

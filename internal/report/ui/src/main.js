@@ -1,4 +1,5 @@
 import { mount } from "svelte";
+import MetricsGuide from "./MetricsGuide.svelte";
 import App from "./App.svelte";
 import Index from "./Index.svelte";
 import "highlight.js/styles/github.css";
@@ -10,7 +11,9 @@ import "./style.css";
 const target = document.getElementById("app");
 try {
   const index = document.getElementById("jmark-index-data");
-  if (index) {
+  if (location.hash.startsWith("#metrics")) {
+    mount(MetricsGuide, {target});
+  } else if (index) {
     mount(Index, { target, props: { runs: JSON.parse(index.textContent) } });
   } else {
     const rows = JSON.parse(document.getElementById("jmark-data").textContent);

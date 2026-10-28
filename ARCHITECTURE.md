@@ -45,7 +45,7 @@ jmark/
 │   ├── tui.go                       Run selection, browser opening, deletion
 │   └── *_test.go                    CLI behavior and terminal flow tests
 ├── internal/
-│   ├── benchmark/                   Shared Plan, Sample, and Measurement types
+│   ├── benchmark/                   Shared plans, metric definitions, observations, and results
 │   ├── catalog/                     Registry, workload parsing, validation, scaffolding
 │   ├── measure/                     Workspaces, builds, external timing, probes, host data
 │   ├── result/                      Unit conversion, sink agreement, schema validation
@@ -175,53 +175,35 @@ command templates do not provide general argument quoting for timed execution.
 
 ## Measurement semantics
 
-The external timer measures the runner process, including startup, module loading,
-and input generation. For workload warmup count `W` and measured iteration count
-`N`, jmark calculates:
+Collectors implement `Collect(Plan)` and return approach observations keyed by
+quantity. The execution layer prepares one workspace, runs HyperfineCollector and
+ProbeCollector sequentially, merges their observations, and cleans up. Both use
+the same build products. Pure approaches and input factories remain uninstrumented.
 
-```text
-lo = median(T(W))                 seconds
-hi = median(T(W + N))             seconds
-delta = hi - lo
-value = delta / N × 1,000,000     µs/op
-total_ms = delta × 1,000          ms
-```
+Hyperfine >=2.0 exports schema 2 with individual execution readings. The adapter
+preserves baseline (`W`) and workload (`W+N`) samples in base units. Metric definitions
+select a source quantity, calculation method, scope, unit and preferred direction.
+Time and cumulative counters use `(median(workload)-median(baseline))/N`; peak RSS
+uses only the workload median in bytes. Throughput is the inverse of wall time/op.
+IPC and cache miss rate divide valid differential counter estimates.
 
-An operation is one approach call over the complete input. The `runs` parameter
-controls the number of process samples. The timer also performs one process-level
-warmup. The workload's `warmup` is the baseline loop count used for subtraction.
-
-The difference estimates the incremental cost of `N` calls. A nonpositive difference
-fails with a noise-floor error. Independent medians do not provide an uncertainty
-estimate; raw timing distributions, confidence intervals, and error bars are not
-stored or displayed.
-
-Sink proportionality checks whether repeated calls preserve the expected work.
-Result conversion requires approach sinks to agree within each runtime and preserves
-numeric sink precision. Cross-runtime disagreement produces a warning. These checks
-do not constitute a general proof of algorithmic equivalence.
-
-Probes execute separately from timing. Their baseline and workload counter medians
-are subtracted and divided by `N`, with values stored in `meta.probes`. Probe
-self-tests use a null workload and reject absolute changes above `0.001` per operation.
-Probe counters are retained in saved results but are not projected into the report UI.
+Unavailable quantities and estimates below resolution produce unavailable metric
+results with reasons. Valid zero counter estimates are retained. Process failures,
+malformed observations and correctness failures abort publication. Baseline and
+workload distributions have separate statistics; they do not describe individual
+operation latency. See [METRICS.md](METRICS.md) for details and extension contracts.
 
 ## Result contract and storage
 
-A Result contains `project`, `runtime`, `metric`, `results`, and `meta`. The metric
-is `us_per_op`; each approach result includes its name, value, iteration count,
-sink, and total milliseconds. Metadata includes workload parameters, measurement
-method, capture time, host information, and runtime version.
+A version 2 Result contains `schema_version`, `project`, `runtime`, `workload`,
+`metrics`, `results`, and `meta`. Each approach has a correctness sink, a result
+for every declared metric, raw observations and phase statistics. Workload input
+parameters and execution counts are separate from measurement definitions.
 
-The top-level `runtime` is the registry identifier. `meta.runtime` is the version
-string. Report projection exposes these as `runtime` and `runtime_version`.
-The report reader normalizes the legacy top-level `lang` field when `runtime` is
-absent. Saved files are not rewritten during reading.
-
-[The Result schema](schema/result.schema.json) is embedded and compiled once by
-`internal/result`. Validation uses this contract directly, including restrictions
-on additional fields. Values are normalized as JSON without converting all numbers
-to floating point. Non-JSON numeric values are rejected before validation.
+The top-level runtime is its registry ID; `meta.runtime` is its version string.
+The schema and semantic reference validation apply when writing and reading.
+Old unversioned results and legacy `lang` records are rejected. Reports project
+one row per approach and metric; metadata carries unit, method, scope and direction.
 
 | Output mode | Saved files | stdout |
 | --- | --- | --- |
@@ -287,8 +269,8 @@ values on a shared numeric axis. Approach, Runtime, and Run can define categorie
 and series. Linear scale uses zero-based bars; logarithmic scale uses points and
 requires positive values. Duplicate observations remain separate.
 
-Workloads are separated by project, metric, input size, warmup, iteration count, and
-sample count. Host and runtime version are displayed but do not partition workloads.
+Workloads are separated by project, input parameters, warmup, iteration count and
+sample count. Metrics are independently separated by ID, unit, method and scope. Host and runtime version are displayed but do not partition workloads.
 Source snapshots accompany newly saved runs; their contents do not partition the
 chart. Comparisons preserve observations without asserting identical environments
 or implementation contents. UI state remains in component memory.
@@ -349,3 +331,13 @@ object) and `meta.unit` (a display unit). Older results fall back to `meta.n`
 and the metric's unit. Parameter values and units participate in workload
 grouping so incompatible results stay separate. This presentation contract does
 not change the current runner's `n` input or its `us_per_op` measurement.
+
+## Metric guide
+
+The report's (?) link opens the same self-contained HTML in a new tab at
+`#metrics/<id>`. The frontend mounts a dedicated guide instead of the report.
+Metric definitions and measurement prose are parsed from the embedded `METRICS.md`;
+illustrations explain time, memory, throughput, CPU counters, cache events and
+branch predictions. Playback is local and respects reduced-motion preferences.
+The build manifest tracks `METRICS.md` alongside frontend sources, and Pages
+rebuilds when that document changes.

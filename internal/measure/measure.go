@@ -81,20 +81,32 @@ func (m *Measure) Build(a benchmark.Approach) error {
 // Time runs hyperfine on timedCmd.
 // {iters} stays literal so --parameter-list can substitute it.
 // lo and hi are those parameter values. The results are wall-clock median seconds.
-func (m *Measure) Time(timedCmd string, lo, hi, runs int) (float64, float64, error) {
-	tmp, err := tempFile("jmark-hf-*")
+func (m *Measure) Time(cmd string, lo, hi, runs int) (float64, float64, error) {
+	observations, err := m.collect(cmd, lo, hi, runs)
 	if err != nil {
 		return 0, 0, err
+	}
+	l, err := median(observations["time_wall_clock"].Baseline)
+	if err != nil {
+		return 0, 0, err
+	}
+	h, err := median(observations["time_wall_clock"].Workload)
+	return l, h, err
+}
+func (m *Measure) collect(timedCmd string, lo, hi, runs int) (map[string]benchmark.Observation, error) {
+	tmp, err := tempFile("jmark-hf-*")
+	if err != nil {
+		return nil, err
 	}
 	defer os.Remove(tmp)
 	errPath := tmp + ".err"
 	defer os.Remove(errPath)
 	errFile, err := os.Create(errPath)
 	if err != nil {
-		return 0, 0, err
+		return nil, err
 	}
 	c := exec.Command("hyperfine",
-		"-N", "--style", "none", "--warmup", "1",
+		"-N", "--metrics", "time_wall_clock", "--style", "none", "--warmup", "1",
 		"--runs", strconv.Itoa(runs),
 		"--output=null",
 		"--parameter-list", "iters", strconv.Itoa(lo)+","+strconv.Itoa(hi),
@@ -110,13 +122,13 @@ func (m *Measure) Time(timedCmd string, lo, hi, runs int) (float64, float64, err
 		if b, readErr := os.ReadFile(errPath); readErr == nil {
 			fmt.Fprint(m.stderr(), string(b))
 		}
-		return 0, 0, jerr("hyperfine failed: %s", timedCmd)
+		return nil, jerr("hyperfine failed: %s", timedCmd)
 	}
 	data, err := os.ReadFile(tmp)
 	if err != nil {
-		return 0, 0, err
+		return nil, err
 	}
-	return parseHyperfine(data, lo, hi)
+	return parseObservations(data, lo, hi)
 }
 
 // Proportional returns nil when sink(i)/i equals sink(j)/j.
@@ -136,7 +148,7 @@ func (m *Measure) Proportional(timedCmd string, i, j int) error {
 	return jerr("sink not proportional to iters (sink(%d)=%s, sink(%d)=%s); does run() mutate its input?", i, a, j, b)
 }
 
-func (m *Measure) timings(plan benchmark.Plan) ([]benchmark.Sample, error) {
+func (m *Measure) timings(plan benchmark.Plan) ([]benchmark.ApproachObservation, error) {
 	w := plan.Params.Warmup
 	hi := w + plan.Params.Iters
 	// Proportional sampling uses at least one iteration. Wall time still uses
@@ -145,21 +157,21 @@ func (m *Measure) timings(plan benchmark.Plan) ([]benchmark.Sample, error) {
 	if lo <= 0 {
 		lo = 1
 	}
-	var samples []benchmark.Sample
+	var samples []benchmark.ApproachObservation
 	for _, a := range plan.Approaches {
 		fmt.Fprintf(m.stderr(), "→ %s %s %s\n", plan.Project, plan.Runtime.ID, a.Name)
 		sink, err := m.Sink(a.TimedCmd, 1)
 		if err != nil {
 			return nil, err
 		}
-		loSec, hiSec, err := m.Time(a.TimedCmd, w, hi, plan.Params.Runs)
+		observations, err := m.collect(a.TimedCmd, w, hi, plan.Params.Runs)
 		if err != nil {
 			return nil, err
 		}
 		if err := m.Proportional(a.TimedCmd, lo, hi); err != nil {
 			return nil, fmt.Errorf("%w\njmark: %s %s: failed sink proportionality", err, plan.Runtime.ID, a.Name)
 		}
-		samples = append(samples, benchmark.Sample{Name: a.Name, Sink: json.Number(sink), Lo: loSec, Hi: hiSec})
+		samples = append(samples, benchmark.ApproachObservation{Name: a.Name, Sink: json.Number(sink), Observations: observations})
 	}
 	return samples, nil
 }
@@ -261,9 +273,10 @@ func splitSpaces(cmd string) []string {
 }
 
 type probeObs struct {
-	iters   int
-	counter string
-	delta   float64
+	iters           int
+	counter         string
+	unit, direction string
+	delta           float64
 }
 
 func (m *Measure) collectProbe(name, cmd, outPath string, lo, hi, runs int) ([]probeObs, error) {
@@ -298,29 +311,36 @@ func readProbeFile(path string, iters int) ([]probeObs, error) {
 			continue
 		}
 		parts := strings.Split(line, "\t")
-		if len(parts) != 2 {
-			continue
+		if len(parts) != 4 {
+			return nil, fmt.Errorf("probe output must contain counter, unit, direction, delta")
 		}
-		delta, err := strconv.ParseFloat(parts[1], 64)
-		if err != nil {
-			return nil, fmt.Errorf("probe delta: %s", parts[1])
+		if parts[1] == "" || (parts[2] != "lower" && parts[2] != "higher" && parts[2] != "neutral") {
+			return nil, fmt.Errorf("invalid probe descriptor")
 		}
-		rows = append(rows, probeObs{iters: iters, counter: parts[0], delta: delta})
+		delta, err := strconv.ParseFloat(parts[3], 64)
+		if err != nil || math.IsNaN(delta) || math.IsInf(delta, 0) {
+			return nil, fmt.Errorf("invalid probe delta: %s", parts[3])
+		}
+		rows = append(rows, probeObs{iters: iters, counter: parts[0], unit: parts[1], direction: parts[2], delta: delta})
 	}
 	return rows, nil
 }
 
 func summarizeProbes(name string, rows []probeObs, lo, hi int) ([]benchmark.ProbeSample, error) {
 	type pair struct {
-		lo []float64
-		hi []float64
+		unit, direction string
+		lo              []float64
+		hi              []float64
 	}
 	groups := map[string]*pair{}
 	for _, row := range rows {
 		g, ok := groups[row.counter]
 		if !ok {
-			g = &pair{}
+			g = &pair{unit: row.unit, direction: row.direction}
 			groups[row.counter] = g
+		}
+		if g.unit != row.unit || g.direction != row.direction {
+			return nil, fmt.Errorf("probe descriptor changed for %s", row.counter)
 		}
 		if row.iters == lo {
 			g.lo = append(g.lo, row.delta)
@@ -345,7 +365,7 @@ func summarizeProbes(name string, rows []probeObs, lo, hi int) ([]benchmark.Prob
 		if err != nil {
 			return nil, jerr("probe %s %s: empty hi sample", name, k)
 		}
-		samples = append(samples, benchmark.ProbeSample{Name: name, Counter: k, Lo: l, Hi: h})
+		samples = append(samples, benchmark.ProbeSample{Name: name, Counter: k, Unit: g.unit, Direction: g.direction, Lo: l, Hi: h, Observation: benchmark.Observation{Baseline: g.lo, Workload: g.hi}})
 	}
 	return samples, nil
 }

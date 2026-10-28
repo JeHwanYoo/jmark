@@ -17,6 +17,13 @@ func (a *app) cmdDoctor() error {
 			ok = false
 			continue
 		}
+		if name == "hyperfine" {
+			var major int
+			if _, err := fmt.Sscanf(line, "hyperfine %d.", &major); err != nil || major < 2 {
+				a.warn("hyperfine >=2.0.0 required")
+				ok = false
+			}
+		}
 		fmt.Fprintf(a.stdout, "doctor: found %s (%s)\n", name, line)
 	}
 	if !ok {

@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 await build({
   entryPoints: ["src/main.js"],
   bundle: true,
-  loader: { ".svg": "dataurl", ".woff2": "dataurl" },
+  loader: { ".md": "text", ".svg": "dataurl", ".woff2": "dataurl" },
   minify: true,
   format: "iife",
   outfile: "dist/app.js",
@@ -50,6 +50,7 @@ async function sourceFiles(directory) {
 
 // Record both inputs and outputs so host tests detect stale or modified bundles.
 const files = [
+  "../../../METRICS.md",
   "build.mjs",
   "package.json",
   "package-lock.json",

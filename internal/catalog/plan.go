@@ -40,6 +40,15 @@ func (c *Catalog) Params(path string) (benchmark.Params, error) {
 		}
 		nums[k] = n
 	}
+	metrics := strings.Fields(f.get("metrics"))
+	if _, present := f.val["metrics"]; present && len(metrics) == 0 {
+		return benchmark.Params{}, jerr("metrics must not be empty")
+	}
+	for _, id := range metrics {
+		if _, ok := benchmark.Metrics[id]; !ok {
+			return benchmark.Params{}, jerr("unknown metric %s", id)
+		}
+	}
 	rawProbes := f.get("probes")
 	for _, name := range ifsFields(rawProbes) {
 		if err := checkProbeName(name, path); err != nil {
@@ -47,11 +56,12 @@ func (c *Catalog) Params(path string) (benchmark.Params, error) {
 		}
 	}
 	return benchmark.Params{
-		N:      int(nums["n"]),
-		Warmup: int(nums["warmup"]),
-		Iters:  int(nums["iters"]),
-		Runs:   int(nums["runs"]),
-		Probes: splitSpace(rawProbes),
+		N:       int(nums["n"]),
+		Metrics: metrics,
+		Warmup:  int(nums["warmup"]),
+		Iters:   int(nums["iters"]),
+		Runs:    int(nums["runs"]),
+		Probes:  splitSpace(rawProbes),
 	}, nil
 }
 

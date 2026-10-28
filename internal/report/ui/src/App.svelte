@@ -1,4 +1,5 @@
 <script>
+  import MetricHelp from "./MetricHelp.svelte";
   import Brand from "./Brand.svelte";
   import RepositoryLink from "./RepositoryLink.svelte";
   import WorkloadMetadata from "./WorkloadMetadata.svelte";
@@ -7,6 +8,10 @@
   import SearchSelect from "./SearchSelect.svelte";
   import {
     colors,
+    metrics,
+    metricKey,
+    displayRow,
+    orderRows,
     conditions,
     conditionKey,
     selectRows,
@@ -17,12 +22,26 @@
   let { rows, sources = "", indexHref = "" } = $props();
   const choices = $derived(conditions(rows));
   let selected = $state("");
+  let selectedMetric = $state("");
+  const metricChoices = $derived(
+    metrics(rows.filter((r) => conditionKey(r) === condition)),
+  );
+  const metric = $derived(
+    metricChoices.some((m) => m.key === selectedMetric)
+      ? selectedMetric
+      : (metricChoices.find((m) => m.label === "Wall time") || metricChoices[0])
+          ?.key,
+  );
   let selectedRuntime = $state("");
   let run = $state("");
   let scale = $state("linear");
   let sort = $state("value");
   const condition = $derived(selected || choices[0]?.key);
-  const filtered = $derived(selectRows(rows, condition, selectedRuntime, run));
+  const filtered = $derived(
+    selectRows(rows, condition, selectedRuntime, run)
+      .filter((r) => metricKey(r) === metric)
+      .map(displayRow),
+  );
   const runtimes = $derived([...new Set(rows.map((r) => r.runtime))]);
   const runs = $derived([...new Set(rows.map((r) => r.run).filter(Boolean))]);
   let axis = $state("name");
@@ -42,13 +61,14 @@
   const legend = $derived([
     ...new Set(filtered.map((r) => r[activeSeries] ?? "—")),
   ]);
-  const ordered = $derived(
-    [...filtered].sort((a, b) =>
-      sort === "value" ? a.value - b.value : a.runtime.localeCompare(b.runtime),
-    ),
+  const ordered = $derived(orderRows(filtered, sort));
+  const chartRows = $derived(
+    ordered.filter((r) => r.status === "ok" && Number.isFinite(r.value)),
   );
   const canLog = $derived(
-    filtered.length > 0 && filtered.every((r) => r.value > 0),
+    filtered.length > 0 &&
+      chartRows.length > 0 &&
+      chartRows.every((r) => r.value > 0),
   );
   const activeScale = $derived(canLog ? scale : "linear");
   const environments = $derived([
@@ -93,6 +113,14 @@
   </div>
   {#if rows.length}
     <div class="filters">
+      <div class="metric-picker">
+        <SearchSelect
+          id="metric"
+          label="Metric"
+          options={metricChoices.map((m) => ({ value: m.key, label: m.label }))}
+          bind:value={() => metric ?? "", (next) => (selectedMetric = next)}
+        /><MetricHelp metric={filtered[0]?.metric} />
+      </div>
       {#if choices.length > 1}
         <SearchSelect
           id="workload"
@@ -147,7 +175,7 @@
         >
       </div>
     </div>
-    <WorkloadMetadata row={rows.find((row) => conditionKey(row) === condition)} />
+    <WorkloadMetadata row={filtered[0]} />
     {#if filtered.length}
       <details class="panel report-section comparison" open>
         <summary>Charts</summary>
@@ -173,13 +201,15 @@
               ></i>{name}</span
             >{/each}
         </div>
-        <Chart
-          rows={ordered}
-          scale={activeScale}
-          {axis}
-          series={activeSeries}
-          {domain}
-        />
+        {#if chartRows.length}<Chart
+            rows={chartRows}
+            scale={activeScale}
+            {axis}
+            series={activeSeries}
+            {domain}
+          />{:else}<p class="empty">
+            No measured values. See the result status for each approach.
+          </p>{/if}
       </details>
       <details class="panel report-section results" open>
         <summary>Results</summary>
@@ -189,9 +219,9 @@
               ><tr
                 >{#if runs.length}<th>Run</th>{/if}<th>Runtime</th><th
                   >Approach</th
-                ><th class="number">{unit(filtered[0])}</th><th
-                  class="number">Total ms</th
-                ><th class="number">Iterations</th></tr
+                ><th class="number">{unit(filtered[0])}</th><th>Status</th><th
+                  class="number">Iterations</th
+                ></tr
               ></thead
             ><tbody
               >{#each ordered as row}<tr
@@ -199,9 +229,9 @@
                     >{row.runtime}</td
                   ><td>{row.name}</td><td class="number value"
                     >{format(row.value)}</td
-                  ><td class="number">{format(row.total_ms)}</td><td
-                    class="number">{format(row.iters)}</td
-                  ></tr
+                  ><td class="number"
+                    >{row.status === "ok" ? "Measured" : row.reason}</td
+                  ><td class="number">{format(row.iters_meta)}</td></tr
                 >{/each}</tbody
             >
           </table>
@@ -219,8 +249,8 @@
                 .join(" · ")}
             </p>
             <p>
-              {row.captured_at ?? "—"} · warmup={row.warmup ??
-                "—"} · iters={row.iters_meta ?? "—"} · runs={row.runs ?? "—"}
+              {row.captured_at ?? "—"} · warmup={row.warmup ?? "—"} · iters={row.iters_meta ??
+                "—"} · runs={row.runs ?? "—"}
             </p>
           </div>{/each}
       </details>
@@ -233,5 +263,20 @@
         >
       </p>{/if}
   {:else}<p class="empty">No results.</p>{/if}
+  <details class="panel report-section">
+    <summary>Measurement details</summary>
+    <pre>{JSON.stringify(
+        filtered.map((r) => ({
+          runtime: r.runtime,
+          approach: r.name,
+          scope: r.scope,
+          method: r.method,
+          statistics: r.statistics,
+          observations: r.observations,
+        })),
+        null,
+        2,
+      )}</pre>
+  </details>
   <Sources markdown={sources} />
 </main>

@@ -44,9 +44,8 @@ func TestWrite(t *testing.T) {
 	}
 }
 
-const parityNDJSON = `{"project":"demo","runtime":"node","metric":"us_per_op","results":[{"name":"for-loop","value":1.25,"iters":2,"total_ms":3.5,"sink":9},{"name":"map","value":4,"iters":2,"total_ms":8,"sink":9}],"meta":{"n":10,"warmup":1,"iters":2,"runs":3,"captured_at":"2026-10-27T00:00:00Z","runtime":"</script>","host":{"os":"Darwin","arch":"arm64","ncpu":2}}}
-{"project":"demo","runtime":"py","metric":"us_per_op","results":[{"name":"for-loop","value":5,"iters":2,"total_ms":10,"sink":9},{"name":"map","value":6.5,"iters":2,"total_ms":13,"sink":9}],"meta":{"n":10,"warmup":1,"iters":2,"runs":3,"captured_at":"2026-10-27T00:00:01Z","runtime":"3.12","host":{"os":"Darwin","arch":"arm64","ncpu":2}}}
-`
+const parityNDJSON = `{"schema_version":2,"project":"demo","runtime":"node","workload":{"parameters":{"n":10},"warmup":1,"iters":2,"runs":3},"metrics":{"us_per_op":{"label":"Wall time","unit":"µs/op","direction":"lower","method":"difference_per_op","scope":"operation"}},"results":[{"name":"for-loop","sink":9,"metrics":{"us_per_op":{"status":"ok","value":1.25}},"observations":{},"statistics":{}},{"name":"map","sink":9,"metrics":{"us_per_op":{"status":"ok","value":4}},"observations":{},"statistics":{}}],"meta":{"n":10,"warmup":1,"iters":2,"runs":3,"captured_at":"2026-10-27T00:00:00Z","runtime":"</script>","host":{"os":"Darwin","arch":"arm64","ncpu":2}}}
+{"schema_version":2,"project":"demo","runtime":"py","workload":{"parameters":{"n":10},"warmup":1,"iters":2,"runs":3},"metrics":{"us_per_op":{"label":"Wall time","unit":"µs/op","direction":"lower","method":"difference_per_op","scope":"operation"}},"results":[{"name":"for-loop","sink":9,"metrics":{"us_per_op":{"status":"ok","value":5}},"observations":{},"statistics":{}},{"name":"map","sink":9,"metrics":{"us_per_op":{"status":"ok","value":6.5}},"observations":{},"statistics":{}}],"meta":{"n":10,"warmup":1,"iters":2,"runs":3,"captured_at":"2026-10-27T00:00:01Z","runtime":"3.12","host":{"os":"Darwin","arch":"arm64","ncpu":2}}}`
 
 func TestPublicationFailureCleansStage(t *testing.T) {
 	parent := t.TempDir()

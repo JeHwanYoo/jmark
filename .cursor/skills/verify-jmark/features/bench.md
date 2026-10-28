@@ -23,7 +23,7 @@ Preconditions:
 - `just doctor` is OK.
 - The runtime's toolchain shows `found` in `just runtimes`.
 
-- **All runtimes.** Run `./.cursor/skills/verify-jmark/helpers/capture.sh "$EV/bench-all" just bench sum-large-doubles`. Exit `0`. Stdout has one line per available runtime. Each line has `"metric":"us_per_op"`, results named `for-loop` and `map-filter-reduce` with equal `sink` (1950000), and `meta.clock` `hyperfine`.
+- **All runtimes.** Run `./.cursor/skills/verify-jmark/helpers/capture.sh "$EV/bench-all" just bench sum-large-doubles`. Exit `0`. Stdout has one line per available runtime. Each line has `"schema_version":2` and wall_time/cpu_time/peak_rss/throughput definitions, results named `for-loop` and `map-filter-reduce` with equal `sink` (1950000), and `meta.collector` `hyperfine`.
 - **One runtime.** Run `./.cursor/skills/verify-jmark/helpers/capture.sh "$EV/bench-node" just bench sum-large-doubles --runtime node`. Exactly one line with `"runtime":"node"`. Same for `py`.
 - **Bad runtime.** Run `./.cursor/skills/verify-jmark/helpers/capture.sh "$EV/bench-bad-runtime" just bench sum-large-doubles --runtime rust`. Exit non-zero; stderr says `unknown runtime 'rust'`; stdout empty.
 - **All-or-nothing (optional).** In a `verify-$RUN_ID` project, make `py/approach-b.py` raise, then run `just bench verify-$RUN_ID`. Exit non-zero and stdout is empty even though js runtimes finished.
