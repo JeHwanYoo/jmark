@@ -5,10 +5,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/JeHwanYoo/jmark/internal/result"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -129,51 +131,24 @@ func flatten(ndjson []byte, run string) ([][]byte, string, error) {
 }
 
 func flattenDoc(doc map[string]json.RawMessage, run string) ([][]byte, error) {
+	var version int
+	_ = json.Unmarshal(doc["schema_version"], &version)
+	if version != 2 {
+		return nil, fmt.Errorf("unsupported result schema: expected schema_version 2")
+	}
 	results, err := rawArray(doc["results"])
 	if err != nil {
 		return nil, err
 	}
-	project, err := fieldRaw(doc, "project")
+	definitions, err := rawObject(doc["metrics"])
 	if err != nil {
 		return nil, err
 	}
-	runtime, err := fieldRaw(doc, "runtime")
-	if err != nil {
-		return nil, err
-	}
-	metric, err := fieldRaw(doc, "metric")
+	workload, err := rawObject(doc["workload"])
 	if err != nil {
 		return nil, err
 	}
 	meta, err := metaFields(doc)
-	if err != nil {
-		return nil, err
-	}
-	n, err := fieldRaw(meta, "n")
-	if err != nil {
-		return nil, err
-	}
-	warmup, err := fieldRaw(meta, "warmup")
-	if err != nil {
-		return nil, err
-	}
-	itersMeta, err := fieldRaw(meta, "iters")
-	if err != nil {
-		return nil, err
-	}
-	runs, err := fieldRaw(meta, "runs")
-	if err != nil {
-		return nil, err
-	}
-	captured, err := fieldRaw(meta, "captured_at")
-	if err != nil {
-		return nil, err
-	}
-	runtimeVersion, err := fieldRaw(meta, "runtime")
-	if err != nil {
-		return nil, err
-	}
-	host, err := fieldRaw(meta, "host")
 	if err != nil {
 		return nil, err
 	}
@@ -183,45 +158,51 @@ func flattenDoc(doc map[string]json.RawMessage, run string) ([][]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		name, err := fieldRaw(item, "name")
+		values, err := rawObject(item["metrics"])
 		if err != nil {
 			return nil, err
 		}
-		value, err := fieldRaw(item, "value")
-		if err != nil {
-			return nil, err
+		ids := make([]string, 0, len(values))
+		for id := range values {
+			ids = append(ids, id)
 		}
-		iters, err := fieldRaw(item, "iters")
-		if err != nil {
-			return nil, err
-		}
-		total, err := fieldRaw(item, "total_ms")
-		if err != nil {
-			return nil, err
-		}
-		sink, err := fieldRaw(item, "sink")
-		if err != nil {
-			return nil, err
-		}
-		keys := []string{
-			"project", "runtime", "metric", "name", "value", "iters", "total_ms", "sink",
-			"n", "warmup", "iters_meta", "runs", "captured_at", "runtime_version", "host",
-		}
-		vals := []json.RawMessage{
-			project, runtime, metric, name, value, iters, total, sink,
-			n, warmup, itersMeta, runs, captured, runtimeVersion, host,
-		}
-		for _, key := range []string{"parameters", "unit"} {
-			if raw, ok := meta[key]; ok {
-				keys = append(keys, key)
-				vals = append(vals, raw)
+		sort.Strings(ids)
+		for _, id := range ids {
+			definition, err := rawObject(definitions[id])
+			if err != nil {
+				return nil, fmt.Errorf("undefined metric %s", id)
 			}
+			value, err := rawObject(values[id])
+			if err != nil {
+				return nil, err
+			}
+			row := map[string]json.RawMessage{"run": jsonString(run), "project": doc["project"], "runtime": doc["runtime"], "metric": jsonString(id), "name": item["name"]}
+			for _, key := range []string{"label", "unit", "direction", "method", "scope"} {
+				row[key] = definition[key]
+			}
+			for _, key := range []string{"value", "status", "reason"} {
+				row[key] = value[key]
+			}
+			row["parameters"] = workload["parameters"]
+			row["warmup"] = workload["warmup"]
+			row["iters_meta"] = workload["iters"]
+			row["runs"] = workload["runs"]
+			row["runtime_version"] = meta["runtime"]
+			row["host"] = meta["host"]
+			row["captured_at"] = meta["captured_at"]
+			row["observations"] = item["observations"]
+			row["statistics"] = item["statistics"]
+			for key, raw := range row {
+				if len(raw) == 0 {
+					row[key] = json.RawMessage("null")
+				}
+			}
+			encoded, err := json.Marshal(row)
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, encoded)
 		}
-		if run != "" {
-			keys = append([]string{"run"}, keys...)
-			vals = append([]json.RawMessage{jsonString(run)}, vals...)
-		}
-		out = append(out, encodeObject(keys, vals))
 	}
 	return out, nil
 }
@@ -274,17 +255,23 @@ func jsonString(s string) json.RawMessage {
 	return bytes.TrimRight(buf.Bytes(), "\n")
 }
 
-// resultDocument accepts the previous top-level "lang" key when opening saved runs.
-// New reports use "runtime"; meta.runtime remains the version string.
 func resultDocument(raw json.RawMessage) (map[string]json.RawMessage, error) {
 	doc, err := rawObject(raw)
 	if err != nil {
 		return nil, err
 	}
-	if _, exists := doc["runtime"]; !exists {
-		doc["runtime"] = doc["lang"]
+	var version int
+	_ = json.Unmarshal(doc["schema_version"], &version)
+	if version != 2 {
+		return nil, fmt.Errorf("unsupported result schema: expected schema_version 2")
 	}
-	delete(doc, "lang")
+	var value map[string]any
+	if err := json.Unmarshal(raw, &value); err != nil {
+		return nil, err
+	}
+	if err := result.CheckSchema(value); err != nil {
+		return nil, err
+	}
 	return doc, nil
 }
 

@@ -20,7 +20,7 @@ HTML path. Confirm the table values match `result.ndjson`, both chart scales wor
 and Environment shows runtime and workload metadata. HTML must work offline.
 
 Use `just open` to compare saved runs. Check Runtime and Run filters, a combination
-with no matching results, and Reset filters. Runs with different projects, metrics,
+with no matching results, and Reset filters. Runs with different projects,
 input sizes, warmup, iterations, or sample counts must appear as separate workloads.
 Check the report at desktop and 390px widths; tables may scroll horizontally.
 
@@ -33,3 +33,11 @@ Verify one chart with a shared numeric axis. Search the Y axis and Series select
 pivot Approach/Runtime/Run, and confirm remaining dimensions and duplicate rows
 remain distinct. Exercise Arrow keys, Home/End, Enter, Escape, Tab, no matches,
 and outside dismissal in SearchSelect. Follow the root DESIGN.md standards.
+
+## Metric guide checks
+
+Use the (?) link beside Metric. Require a separate tab for the selected metric,
+matching definitions in `METRICS.md`, and navigation through all 13 built-in metrics.
+Check play, pause, replay and scrubbing, browser back navigation, reduced-motion
+preferences, and offline file opening. Animation values are explanatory examples,
+not readings from the report. Inspect 320px, 390px and desktop layouts.

@@ -6,117 +6,19 @@ import (
 	"testing"
 )
 
-func TestParseHyperfineShapes(t *testing.T) {
-	cases := []struct {
-		name string
-		json string
-		lo   float64
-		hi   float64
-	}{
-		{
-			name: "v1 string iters and top-level median",
-			json: `{"results":[
-				{"median":1.5,"parameters":{"iters":"2"}},
-				{"median":3.25,"parameters":{"iters":"10"}}
-			]}`,
-			lo: 1.5, hi: 3.25,
-		},
-		{
-			name: "v2 object iters and wall-clock median",
-			json: `{"results":[
-				{"parameters":{"iters":{"value":"10"}},"summary":{"time_wall_clock":{"median":4}}},
-				{"parameters":{"iters":{"value":"2"}},"summary":{"time_wall_clock":{"median":1.5}}}
-			]}`,
-			lo: 1.5, hi: 4,
-		},
-		{
-			name: "numeric iters value",
-			json: `{"results":[
-				{"median":8,"parameters":{"iters":{"value":2}}},
-				{"median":9,"parameters":{"iters":{"value":10}}}
-			]}`,
-			lo: 8, hi: 9,
-		},
-		{
-			name: "summary median wins over top-level",
-			json: `{"results":[
-				{"median":9,"summary":{"time_wall_clock":{"median":1.5}},"parameters":{"iters":"2"}},
-				{"median":9,"summary":{"time_wall_clock":{"median":4}},"parameters":{"iters":"10"}}
-			]}`,
-			lo: 1.5, hi: 4,
-		},
-		{
-			name: "null summary median falls back",
-			json: `{"results":[
-				{"median":1.25,"summary":{"time_wall_clock":{"median":null}},"parameters":{"iters":"2"}},
-				{"median":6,"parameters":{"iters":"10"}}
-			]}`,
-			lo: 1.25, hi: 6,
-		},
-		{
-			name: "same lo and hi uses the one row twice",
-			json: `{"results":[{"median":3,"parameters":{"iters":"5"}}]}`,
-			lo:   3, hi: 3,
-		},
+func TestObservationsV2(t *testing.T) {
+	raw := []byte(`{"schema_version":2,"results":[{"parameters":{"iters":{"value":"2"}},"measurements":[{"time_wall_clock":{"value":1,"unit":"second"},"memory_peak_resident":{"value":100,"unit":"byte"}}]},{"parameters":{"iters":{"value":"10"}},"measurements":[{"time_wall_clock":{"value":3,"unit":"second"},"memory_peak_resident":{"value":200,"unit":"byte"}}]}]}`)
+	got, err := parseObservations(raw, 2, 10)
+	if err != nil {
+		t.Fatal(err)
 	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			lo, hi := 2, 10
-			if tc.name == "same lo and hi uses the one row twice" {
-				lo, hi = 5, 5
-			}
-			gotLo, gotHi, err := parseHyperfine([]byte(tc.json), lo, hi)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if gotLo != tc.lo || gotHi != tc.hi {
-				t.Fatalf("got %v %v, want %v %v", gotLo, gotHi, tc.lo, tc.hi)
-			}
-		})
+	if got["time_wall_clock"].Workload[0] != 3 || got["memory_peak_resident"].Baseline[0] != 100 {
+		t.Fatal(got)
 	}
-}
-
-func TestParseHyperfineRejects(t *testing.T) {
-	cases := []struct {
-		name string
-		json string
-		want string
-	}{
-		{
-			name: "no median",
-			json: `{"results":[{"parameters":{"iters":"2"}},{"parameters":{"iters":"10"}}]}`,
-			want: "no wall-clock median",
-		},
-		{
-			name: "median is a string",
-			json: `{"results":[
-				{"summary":{"time_wall_clock":{"median":"slow"}},"parameters":{"iters":"2"}},
-				{"median":1,"parameters":{"iters":"10"}}
-			]}`,
-			want: "no wall-clock median",
-		},
-		{
-			name: "missing hi",
-			json: `{"results":[{"median":1,"parameters":{"iters":"2"}}]}`,
-			want: "missing iters=2 or iters=10",
-		},
-		{
-			name: "duplicate lo",
-			json: `{"results":[
-				{"median":1,"parameters":{"iters":"2"}},
-				{"median":2,"parameters":{"iters":"2"}},
-				{"median":3,"parameters":{"iters":"10"}}
-			]}`,
-			want: "missing iters=2 or iters=10",
-		},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			_, _, err := parseHyperfine([]byte(tc.json), 2, 10)
-			if err == nil || !strings.Contains(err.Error(), tc.want) {
-				t.Fatalf("err %v, want substring %q", err, tc.want)
-			}
-		})
+	for _, bad := range []string{`{"results":[]}`, `{"schema_version":2,"results":[]}`, strings.ReplaceAll(string(raw), `"value":3`, `"value":-3`)} {
+		if _, err := parseObservations([]byte(bad), 2, 10); err == nil {
+			t.Fatal("invalid export accepted")
+		}
 	}
 }
 

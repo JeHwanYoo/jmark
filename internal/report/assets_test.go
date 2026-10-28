@@ -4,9 +4,11 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"github.com/JeHwanYoo/jmark/internal/benchmark"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -19,7 +21,7 @@ func TestEmbeddedAssetsMatchSources(t *testing.T) {
 	if err := json.Unmarshal(raw, &hashes); err != nil {
 		t.Fatal(err)
 	}
-	files := []string{"build.mjs", "package.json", "package-lock.json", "dist/app.js", "dist/app.css"}
+	files := []string{"../../../METRICS.md", "build.mjs", "package.json", "package-lock.json", "dist/app.js", "dist/app.css"}
 	err = filepath.WalkDir("ui/src", func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -47,6 +49,18 @@ func TestEmbeddedAssetsMatchSources(t *testing.T) {
 		sum := sha256.Sum256(body)
 		if hashes[path] != hex.EncodeToString(sum[:]) {
 			t.Errorf("UI build does not match %s; run just ui-build", path)
+		}
+	}
+}
+
+func TestMetricGuideCoversRegistry(t *testing.T) {
+	document, err := os.ReadFile("../../METRICS.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for id := range benchmark.Metrics {
+		if !strings.Contains(string(document), "(`"+id+"`)") {
+			t.Errorf("missing guide for %s", id)
 		}
 	}
 }

@@ -1,41 +1,235 @@
 {
-  "project": "golden",
-  "runtime": "node",
-  "metric": "us_per_op",
-  "results": [
-    {
-      "name": "a",
-      "value": 5000,
-      "iters": 100,
-      "total_ms": 500,
-      "sink": 42
-    },
-    {
-      "name": "b",
-      "value": 1250,
-      "iters": 100,
-      "total_ms": 125,
-      "sink": 42
-    }
-  ],
   "meta": {
-    "n": 1000,
-    "warmup": 10,
-    "iters": 100,
-    "runs": 5,
-    "clock": "hyperfine",
-    "method": "differential-median",
-    "probe_method": "differential-snapshot",
-    "probes": {
-      "a": {
-        "gc_per_op": 0
-      },
-      "b": {
-        "gc_per_op": 0.12
-      }
-    },
+    "collector": "hyperfine",
     "probes_unavailable": [
       "alloc"
     ]
+  },
+  "metrics": {
+    "cpu_time": {
+      "label": "CPU time",
+      "unit": "s/op",
+      "direction": "lower",
+      "method": "difference_per_op",
+      "scope": "operation",
+      "source": "time_cpu"
+    },
+    "peak_rss": {
+      "label": "Peak RSS",
+      "unit": "B",
+      "direction": "lower",
+      "method": "workload_median",
+      "scope": "process_peak",
+      "source": "memory_peak_resident"
+    },
+    "probe.gc": {
+      "label": "gc",
+      "unit": "count/op",
+      "direction": "lower",
+      "method": "difference_per_op",
+      "scope": "operation",
+      "source": "probe.gc"
+    },
+    "throughput": {
+      "label": "Throughput",
+      "unit": "op/s",
+      "direction": "higher",
+      "method": "inverse_wall_time",
+      "scope": "operation",
+      "source": "time_wall_clock"
+    },
+    "wall_time": {
+      "label": "Wall time",
+      "unit": "s/op",
+      "direction": "lower",
+      "method": "difference_per_op",
+      "scope": "operation",
+      "source": "time_wall_clock"
+    }
+  },
+  "project": "golden",
+  "results": [
+    {
+      "metrics": {
+        "cpu_time": {
+          "status": "unavailable",
+          "reason": "not_reported_by_collector"
+        },
+        "peak_rss": {
+          "status": "unavailable",
+          "reason": "not_reported_by_collector"
+        },
+        "probe.gc": {
+          "status": "ok",
+          "value": 0
+        },
+        "throughput": {
+          "status": "ok",
+          "value": 200
+        },
+        "wall_time": {
+          "status": "ok",
+          "value": 0.005
+        }
+      },
+      "name": "a",
+      "observations": {
+        "probe.gc": {
+          "baseline": [
+            1
+          ],
+          "workload": [
+            1
+          ]
+        },
+        "time_wall_clock": {
+          "baseline": [
+            0.25
+          ],
+          "workload": [
+            0.75
+          ]
+        }
+      },
+      "sink": 42,
+      "statistics": {
+        "probe.gc": {
+          "baseline": {
+            "count": 1,
+            "cv": null,
+            "max": 1,
+            "mean": 1,
+            "median": 1,
+            "min": 1,
+            "stddev": null
+          },
+          "workload": {
+            "count": 1,
+            "cv": null,
+            "max": 1,
+            "mean": 1,
+            "median": 1,
+            "min": 1,
+            "stddev": null
+          }
+        },
+        "time_wall_clock": {
+          "baseline": {
+            "count": 1,
+            "cv": null,
+            "max": 0.25,
+            "mean": 0.25,
+            "median": 0.25,
+            "min": 0.25,
+            "stddev": null
+          },
+          "workload": {
+            "count": 1,
+            "cv": null,
+            "max": 0.75,
+            "mean": 0.75,
+            "median": 0.75,
+            "min": 0.75,
+            "stddev": null
+          }
+        }
+      }
+    },
+    {
+      "metrics": {
+        "cpu_time": {
+          "status": "unavailable",
+          "reason": "not_reported_by_collector"
+        },
+        "peak_rss": {
+          "status": "unavailable",
+          "reason": "not_reported_by_collector"
+        },
+        "probe.gc": {
+          "status": "ok",
+          "value": 0.12
+        },
+        "throughput": {
+          "status": "ok",
+          "value": 800
+        },
+        "wall_time": {
+          "status": "ok",
+          "value": 0.00125
+        }
+      },
+      "name": "b",
+      "observations": {
+        "probe.gc": {
+          "baseline": [
+            2
+          ],
+          "workload": [
+            14
+          ]
+        },
+        "time_wall_clock": {
+          "baseline": [
+            0.5
+          ],
+          "workload": [
+            0.625
+          ]
+        }
+      },
+      "sink": 42,
+      "statistics": {
+        "probe.gc": {
+          "baseline": {
+            "count": 1,
+            "cv": null,
+            "max": 2,
+            "mean": 2,
+            "median": 2,
+            "min": 2,
+            "stddev": null
+          },
+          "workload": {
+            "count": 1,
+            "cv": null,
+            "max": 14,
+            "mean": 14,
+            "median": 14,
+            "min": 14,
+            "stddev": null
+          }
+        },
+        "time_wall_clock": {
+          "baseline": {
+            "count": 1,
+            "cv": null,
+            "max": 0.5,
+            "mean": 0.5,
+            "median": 0.5,
+            "min": 0.5,
+            "stddev": null
+          },
+          "workload": {
+            "count": 1,
+            "cv": null,
+            "max": 0.625,
+            "mean": 0.625,
+            "median": 0.625,
+            "min": 0.625,
+            "stddev": null
+          }
+        }
+      }
+    }
+  ],
+  "runtime": "node",
+  "schema_version": 2,
+  "workload": {
+    "iters": 100,
+    "parameters": {
+      "n": 1000
+    },
+    "runs": 5,
+    "warmup": 10
   }
 }

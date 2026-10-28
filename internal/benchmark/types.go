@@ -5,11 +5,12 @@ import "encoding/json"
 
 // Params is the bench.toml workload.
 type Params struct {
-	N      int      `json:"n"`
-	Warmup int      `json:"warmup"`
-	Iters  int      `json:"iters"`
-	Runs   int      `json:"runs"`
-	Probes []string `json:"probes"`
+	N       int      `json:"n"`
+	Warmup  int      `json:"warmup"`
+	Iters   int      `json:"iters"`
+	Runs    int      `json:"runs"`
+	Metrics []string `json:"metrics,omitempty"`
+	Probes  []string `json:"probes"`
 }
 
 // Plan describes one workload on one runtime before execution.
@@ -56,21 +57,155 @@ type Approach struct {
 	ProbeCmd *string `json:"probe_cmd"`
 }
 
-// Sample contains external wall-clock medians in seconds and a single-call sink.
-type Sample struct {
-	Name   string
-	Sink   json.Number
-	Lo, Hi float64
+// Sample holds collector observations and a single-call correctness sink.
+type ApproachObservation struct {
+	Name         string
+	Sink         json.Number
+	Definitions  map[string]MetricDefinition
+	Observations map[string]Observation
 }
 
 // ProbeSample contains counter medians from separate baseline and workload runs.
 type ProbeSample struct {
-	Name, Counter string
-	Lo, Hi        float64
+	Name, Counter   string
+	Unit, Direction string
+	Lo, Hi          float64
+	Observation     Observation
 }
 
 // Measurement holds timing and probe observations from the same execution workspace.
 type Measurement struct {
-	Samples []Sample
-	Probes  []ProbeSample
+	Approaches []ApproachObservation
+}
+
+// MetricDefinition describes a scalar independently of its collector or presentation.
+type MetricDefinition struct {
+	Label     string `json:"label"`
+	Unit      string `json:"unit"`
+	Direction string `json:"direction"`
+	Method    string `json:"method"`
+	Scope     string `json:"scope"`
+	Source    string `json:"source,omitempty"`
+	// Readings are the collector values the metric is computed from.
+	Readings []string `json:"-"`
+}
+type Observation struct {
+	Baseline []float64 `json:"baseline"`
+	Workload []float64 `json:"workload"`
+}
+type MetricResult struct {
+	Status string   `json:"status"`
+	Value  *float64 `json:"value,omitempty"`
+	Reason string   `json:"reason,omitempty"`
+}
+
+var DefaultMetrics = []string{"wall_time", "cpu_time", "peak_rss", "throughput"}
+var Metrics = map[string]MetricDefinition{
+	"wall_time":        {"Wall time", "s/op", "lower", "difference_per_op", "operation", "time_wall_clock", []string{"time_wall_clock"}},
+	"cpu_time":         {"CPU time", "s/op", "lower", "difference_per_op", "operation", "time_cpu", []string{"time_cpu"}},
+	"user_time":        {"User CPU time", "s/op", "lower", "difference_per_op", "operation", "time_user", []string{"time_user"}},
+	"system_time":      {"System CPU time", "s/op", "lower", "difference_per_op", "operation", "time_system", []string{"time_system"}},
+	"peak_rss":         {"Peak RSS", "B", "lower", "workload_median", "process_peak", "memory_peak_resident", []string{"memory_peak_resident"}},
+	"throughput":       {"Throughput", "op/s", "higher", "inverse_wall_time", "operation", "time_wall_clock", []string{"time_wall_clock"}},
+	"instructions":     {"Instructions", "instructions/op", "lower", "difference_per_op", "hardware", "instructions", []string{"instructions"}},
+	"cpu_cycles":       {"CPU cycles", "cycles/op", "lower", "difference_per_op", "hardware", "cpu_cycles", []string{"cpu_cycles"}},
+	"cache_references": {"Cache references", "references/op", "neutral", "difference_per_op", "hardware", "cache_references", []string{"cache_references"}},
+	"cache_misses":     {"Cache misses", "misses/op", "lower", "difference_per_op", "hardware", "cache_misses", []string{"cache_misses"}},
+	"branch_misses":    {"Branch misses", "misses/op", "lower", "difference_per_op", "hardware", "branch_misses", []string{"branch_misses"}},
+	"ipc":              {"IPC", "instructions/cycle", "neutral", "ratio", "hardware", "", []string{"instructions", "cpu_cycles"}},
+	"cache_miss_rate":  {"Cache miss rate", "ratio", "lower", "ratio", "hardware", "", []string{"cache_misses", "cache_references"}},
+}
+
+// Reading is one raw value reported by hyperfine. Platforms follow hyperfine
+// 2.0's Metric::ensure_available (counters also need 64-bit Linux); permissions
+// and hardware can still withhold a supported reading, which only collection reveals.
+type Reading struct {
+	ID        string   `json:"id"`
+	Platforms []string `json:"platforms"`
+}
+
+var Readings = []Reading{
+	{"time_wall_clock", []string{"darwin", "linux", "windows"}},
+	{"time_cpu", []string{"darwin", "linux", "windows"}},
+	{"time_user", []string{"darwin", "linux", "windows"}},
+	{"time_system", []string{"darwin", "linux", "windows"}},
+	{"memory_peak_resident", []string{"darwin", "linux"}},
+	{"cpu_cycles", []string{"darwin", "linux"}},
+	{"instructions", []string{"darwin", "linux"}},
+	{"cache_references", []string{"linux"}},
+	{"cache_misses", []string{"linux"}},
+	{"branch_misses", []string{"linux"}},
+}
+
+// ReadingKnown reports whether id is a collector reading rather than a probe counter.
+func ReadingKnown(id string) bool {
+	for _, r := range Readings {
+		if r.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
+// ReadingSupported reports whether the collector can report id on goos.
+func ReadingSupported(id, goos string) bool {
+	for _, r := range Readings {
+		if r.ID == id {
+			for _, p := range r.Platforms {
+				if p == goos {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// MetricSupported reports whether every reading behind a built-in metric is supported on goos.
+func MetricSupported(id, goos string) bool {
+	d, ok := Metrics[id]
+	if !ok {
+		return false
+	}
+	for _, r := range d.Readings {
+		if !ReadingSupported(r, goos) {
+			return false
+		}
+	}
+	return true
+}
+
+// Result is the persisted contract. Metric identities are extensible data.
+type Result struct {
+	SchemaVersion int                         `json:"schema_version"`
+	Project       string                      `json:"project"`
+	Runtime       string                      `json:"runtime"`
+	Workload      map[string]any              `json:"workload"`
+	Metrics       map[string]MetricDefinition `json:"metrics"`
+	Results       []any                       `json:"results"`
+	Meta          map[string]any              `json:"meta"`
+}
+
+func AttachProbes(samples []ApproachObservation, probes []ProbeSample) {
+	for i := range samples {
+		s := &samples[i]
+		if s.Observations == nil {
+			s.Observations = map[string]Observation{}
+		}
+		if s.Definitions == nil {
+			s.Definitions = map[string]MetricDefinition{}
+		}
+		for _, p := range probes {
+			if p.Name != s.Name {
+				continue
+			}
+			id := "probe." + p.Counter
+			s.Definitions[id] = MetricDefinition{Label: p.Counter, Unit: p.Unit + "/op", Direction: p.Direction, Method: "difference_per_op", Scope: "operation", Source: id}
+			o := p.Observation
+			if len(o.Baseline) == 0 && len(o.Workload) == 0 {
+				o = Observation{Baseline: []float64{p.Lo}, Workload: []float64{p.Hi}}
+			}
+			s.Observations[id] = o
+		}
+	}
 }

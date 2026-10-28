@@ -6,6 +6,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	goruntime "runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -70,6 +71,7 @@ func TestBuildMatchesGolden(t *testing.T) {
 func fixtureSamples(t *testing.T, samples, probes string) benchmark.Measurement {
 	t.Helper()
 	var out benchmark.Measurement
+	var probesOut []benchmark.ProbeSample
 	parse := func(s string) float64 {
 		n, err := strconv.ParseFloat(s, 64)
 		if err != nil {
@@ -85,7 +87,7 @@ func fixtureSamples(t *testing.T, samples, probes string) benchmark.Measurement 
 		if len(f) != 4 {
 			t.Fatalf("invalid sample fixture %q", line)
 		}
-		out.Samples = append(out.Samples, benchmark.Sample{Name: f[0], Sink: json.Number(f[1]), Lo: parse(f[2]), Hi: parse(f[3])})
+		out.Approaches = append(out.Approaches, benchmark.ApproachObservation{Name: f[0], Sink: json.Number(f[1]), Observations: map[string]benchmark.Observation{"time_wall_clock": {Baseline: []float64{parse(f[2])}, Workload: []float64{parse(f[3])}}}})
 	}
 	for _, line := range strings.Split(strings.TrimSpace(probes), "\n") {
 		if line == "" {
@@ -95,8 +97,9 @@ func fixtureSamples(t *testing.T, samples, probes string) benchmark.Measurement 
 		if len(f) != 4 {
 			t.Fatalf("invalid probe fixture %q", line)
 		}
-		out.Probes = append(out.Probes, benchmark.ProbeSample{Name: f[0], Counter: f[1], Lo: parse(f[2]), Hi: parse(f[3])})
+		probesOut = append(probesOut, benchmark.ProbeSample{Name: f[0], Counter: f[1], Unit: "count", Direction: "lower", Lo: parse(f[2]), Hi: parse(f[3])})
 	}
+	benchmark.AttachProbes(out.Approaches, probesOut)
 	return out
 }
 
@@ -109,7 +112,7 @@ func TestSchemaRejectsUnknownFieldsAndNonfiniteNumbers(t *testing.T) {
 		"unknown root":     func(v map[string]any) { v["extra"] = true },
 		"unknown row":      func(v map[string]any) { v["results"].([]any)[0].(map[string]any)["extra"] = true },
 		"infinite":         func(v map[string]any) { v["results"].([]any)[0].(map[string]any)["value"] = math.Inf(1) },
-		"fractional count": func(v map[string]any) { v["meta"].(map[string]any)["iters"] = 1.5 },
+		"fractional count": func(v map[string]any) { v["workload"].(map[string]any)["iters"] = 1.5 },
 		"missing field":    func(v map[string]any) { delete(v, "runtime") },
 	}
 	for name, change := range cases {
@@ -136,9 +139,9 @@ func TestBuildExactSinkAgreement(t *testing.T) {
 		{"9007199254740993", "9007199254740993", true},
 		{"1", "1.0", true},
 	} {
-		observations := benchmark.Measurement{Samples: []benchmark.Sample{
-			{Name: "a", Sink: json.Number(tc.a), Lo: 1, Hi: 2},
-			{Name: "b", Sink: json.Number(tc.b), Lo: 1, Hi: 2},
+		observations := benchmark.Measurement{Approaches: []benchmark.ApproachObservation{
+			{Name: "a", Sink: json.Number(tc.a), Observations: map[string]benchmark.Observation{"time_wall_clock": {Baseline: []float64{1}, Workload: []float64{2}}}},
+			{Name: "b", Sink: json.Number(tc.b), Observations: map[string]benchmark.Observation{"time_wall_clock": {Baseline: []float64{1}, Workload: []float64{2}}}},
 		}}
 		got, err := result.Build(plan, observations)
 		if (err == nil) != tc.valid {
@@ -150,5 +153,51 @@ func TestBuildExactSinkAgreement(t *testing.T) {
 				t.Fatalf("sink lost precision: %v", sink)
 			}
 		}
+	}
+}
+
+func TestMetricSemantics(t *testing.T) {
+	p := benchmark.Plan{Project: "demo", Runtime: benchmark.PlanRuntime{ID: "node"}, Params: benchmark.Params{N: 10, Iters: 10, Runs: 2, Metrics: []string{"wall_time", "cpu_time", "peak_rss", "throughput", "instructions", "cpu_cycles", "ipc", "cache_misses"}}}
+	obs := benchmark.Measurement{Approaches: []benchmark.ApproachObservation{{Name: "loop", Sink: "9007199254740993", Observations: map[string]benchmark.Observation{
+		"time_wall_clock":      {Baseline: []float64{1, 1}, Workload: []float64{3, 3}},
+		"time_cpu":             {Baseline: []float64{1}, Workload: []float64{0.5}},
+		"memory_peak_resident": {Baseline: []float64{100}, Workload: []float64{400, 600}},
+		"instructions":         {Baseline: []float64{100}, Workload: []float64{300}},
+		"cpu_cycles":           {Baseline: []float64{10}, Workload: []float64{110}},
+	}}}}
+	got, err := result.Build(p, obs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = result.CheckSchema(got); err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := json.Marshal(got)
+	var doc struct {
+		Results []struct {
+			Metrics map[string]benchmark.MetricResult `json:"metrics"`
+		} `json:"results"`
+	}
+	json.Unmarshal(raw, &doc)
+	values := doc.Results[0].Metrics
+	for id, want := range map[string]float64{"wall_time": 0.2, "peak_rss": 500, "throughput": 5, "instructions": 20, "ipc": 2} {
+		if values[id].Value == nil || math.Abs(*values[id].Value-want) > 1e-9 {
+			t.Fatalf("%s: %+v", id, values[id])
+		}
+	}
+	if values["cpu_time"].Reason != "below_noise_floor" || values["cache_misses"].Status != "unavailable" {
+		t.Fatal(values)
+	}
+	wantMissing := "unsupported_on_platform"
+	if benchmark.ReadingSupported("cache_misses", goruntime.GOOS) {
+		wantMissing = "not_reported_by_collector"
+	}
+	if values["cache_misses"].Reason != wantMissing {
+		t.Fatalf("cache_misses reason on %s: %+v", goruntime.GOOS, values["cache_misses"])
+	}
+	p.Params.Metrics = []string{"peak_rss"}
+	got, err = result.Build(p, obs)
+	if err != nil || len(got["metrics"].(map[string]benchmark.MetricDefinition)) != 1 {
+		t.Fatalf("RSS-only: %v %v", got, err)
 	}
 }

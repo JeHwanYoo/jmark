@@ -9,7 +9,7 @@ import (
 
 const (
 	agentsStub = "TODO: subject, metric, input shape, fairness. Max 200 chars. See ../../AGENTS.md.\n"
-	benchStub  = "n = 100000\nwarmup = 10\niters = 200\nruns = 5\n"
+	benchStub  = "n = 100000\nwarmup = 10\niters = 200\nruns = 5\nmetrics = \"wall_time cpu_time peak_rss throughput\"\n"
 )
 
 // Scaffold copies family templates into benches/<id>. Existing files are left in place.

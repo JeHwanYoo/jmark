@@ -1,1 +1,1 @@
-Compare map/filter/reduce vs a single for-loop for sum(x*2 where x*2>10). Metric: µs/op. Input: 1e5 ints in 1..20. Same data, warmup, and iteration count for every language port.
+Compare fused loop vs map/filter/reduce on 1e5 ints in 1..20. Measure wall/CPU time, peak RSS and throughput. Same data, warmup, iterations and runs across runtimes.

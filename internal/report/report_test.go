@@ -78,7 +78,7 @@ func TestRenderCompareShape(t *testing.T) {
 func TestRenderCompareEmpty(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "empty.ndjson")
-	if err := os.WriteFile(path, []byte(`{"project":"demo","results":[]}`+"\n"), 0o644); err != nil {
+	if err := os.WriteFile(path, []byte(`{"schema_version":2,"project":"demo","runtime":"node","workload":{"parameters":{"n":1},"warmup":0,"iters":1,"runs":1},"metrics":{"wall_time":{"label":"wall_time","unit":"wall_time","direction":"lower","method":"difference_per_op","scope":"operation"}},"results":[],"meta":{}}`+"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := RenderCompare([]CompareRun{{Label: "demo/t", Path: path}}); err == nil {
@@ -150,18 +150,15 @@ func scriptData(html string) string {
 	return rest[:j]
 }
 
-const parityNDJSON = `{"project":"demo","runtime":"node","metric":"us_per_op","results":[{"name":"for-loop","value":1.25,"iters":2,"total_ms":3.5,"sink":9},{"name":"map","value":4,"iters":2,"total_ms":8,"sink":9}],"meta":{"n":10,"warmup":1,"iters":2,"runs":3,"captured_at":"2026-10-27T00:00:00Z","runtime":"</script>","host":{"os":"Darwin","arch":"arm64","ncpu":2}}}
-{"project":"demo","runtime":"py","metric":"us_per_op","results":[{"name":"for-loop","value":5,"iters":2,"total_ms":10,"sink":9},{"name":"map","value":6.5,"iters":2,"total_ms":13,"sink":9}],"meta":{"n":10,"warmup":1,"iters":2,"runs":3,"captured_at":"2026-10-27T00:00:01Z","runtime":"3.12","host":{"os":"Darwin","arch":"arm64","ncpu":2}}}
-`
+const parityNDJSON = `{"schema_version":2,"project":"demo","runtime":"node","workload":{"parameters":{"n":10},"warmup":1,"iters":2,"runs":3},"metrics":{"us_per_op":{"label":"Wall time","unit":"µs/op","direction":"lower","method":"difference_per_op","scope":"operation"}},"results":[{"name":"for-loop","sink":9,"metrics":{"us_per_op":{"status":"ok","value":1.25}},"observations":{},"statistics":{}},{"name":"map","sink":9,"metrics":{"us_per_op":{"status":"ok","value":4}},"observations":{},"statistics":{}}],"meta":{"n":10,"warmup":1,"iters":2,"runs":3,"captured_at":"2026-10-27T00:00:00Z","runtime":"</script>","host":{"os":"Darwin","arch":"arm64","ncpu":2}}}
+{"schema_version":2,"project":"demo","runtime":"py","workload":{"parameters":{"n":10},"warmup":1,"iters":2,"runs":3},"metrics":{"us_per_op":{"label":"Wall time","unit":"µs/op","direction":"lower","method":"difference_per_op","scope":"operation"}},"results":[{"name":"for-loop","sink":9,"metrics":{"us_per_op":{"status":"ok","value":5}},"observations":{},"statistics":{}},{"name":"map","sink":9,"metrics":{"us_per_op":{"status":"ok","value":6.5}},"observations":{},"statistics":{}}],"meta":{"n":10,"warmup":1,"iters":2,"runs":3,"captured_at":"2026-10-27T00:00:01Z","runtime":"3.12","host":{"os":"Darwin","arch":"arm64","ncpu":2}}}`
 
-const parityNDJSON2 = `{"project":"demo","runtime":"node","metric":"us_per_op","results":[{"name":"for-loop","value":2,"iters":2,"total_ms":4,"sink":9}],"meta":{"n":10,"warmup":1,"iters":2,"runs":3,"captured_at":"2026-10-27T01:00:00Z","runtime":"v1","host":{"os":"Darwin","arch":"arm64","ncpu":2}}}
-`
+const parityNDJSON2 = `{"schema_version":2,"project":"demo","runtime":"node","workload":{"parameters":{"n":10},"warmup":1,"iters":2,"runs":3},"metrics":{"us_per_op":{"label":"Wall time","unit":"µs/op","direction":"lower","method":"difference_per_op","scope":"operation"}},"results":[{"name":"for-loop","sink":9,"metrics":{"us_per_op":{"status":"ok","value":2}},"observations":{},"statistics":{}}],"meta":{"n":10,"warmup":1,"iters":2,"runs":3,"captured_at":"2026-10-27T01:00:00Z","runtime":"v1","host":{"os":"Darwin","arch":"arm64","ncpu":2}}}`
 
-const envNDJSON = `{"project":"demo","runtime":"node","metric":"us_per_op","results":[{"name":"a","value":1,"iters":1,"total_ms":1,"sink":1}],"meta":{"captured_at":"","runtime":"v1","host":{}}}
-{"project":"demo","runtime":"node","metric":"us_per_op","results":[{"name":"a","value":1,"iters":1,"total_ms":1,"sink":1}],"meta":{"captured_at":"2026-10-27T00:00:00Z","runtime":"</script>","host":{"os":"Darwin","ncpu":2}}}
-{"project":"demo","runtime":"py","metric":"us_per_op","results":[{"name":"a","value":1,"iters":1,"total_ms":1,"sink":1}],"meta":{"runtime":null,"host":{}}}
-{"project":"demo","runtime":"node","metric":"us_per_op","results":[{"name":"a","value":1,"iters":1,"total_ms":1,"sink":1}],"meta":{"captured_at":"2026-10-27T00:00:01Z","runtime":"v2","host":{"os":"Linux"}}}
-`
+const envNDJSON = `{"schema_version":2,"project":"demo","runtime":"node","workload":{"parameters":{"n":1},"warmup":0,"iters":1,"runs":1},"metrics":{"us_per_op":{"label":"Wall time","unit":"µs/op","direction":"lower","method":"difference_per_op","scope":"operation"}},"results":[{"name":"a","sink":1,"metrics":{"us_per_op":{"status":"ok","value":1}},"observations":{},"statistics":{}}],"meta":{"captured_at":"","runtime":"v1","host":{}}}
+{"schema_version":2,"project":"demo","runtime":"node","workload":{"parameters":{"n":1},"warmup":0,"iters":1,"runs":1},"metrics":{"us_per_op":{"label":"Wall time","unit":"µs/op","direction":"lower","method":"difference_per_op","scope":"operation"}},"results":[{"name":"a","sink":1,"metrics":{"us_per_op":{"status":"ok","value":1}},"observations":{},"statistics":{}}],"meta":{"captured_at":"2026-10-27T00:00:00Z","runtime":"</script>","host":{"os":"Darwin","ncpu":2}}}
+{"schema_version":2,"project":"demo","runtime":"py","workload":{"parameters":{"n":1},"warmup":0,"iters":1,"runs":1},"metrics":{"us_per_op":{"label":"Wall time","unit":"µs/op","direction":"lower","method":"difference_per_op","scope":"operation"}},"results":[{"name":"a","sink":1,"metrics":{"us_per_op":{"status":"ok","value":1}},"observations":{},"statistics":{}}],"meta":{"runtime":null,"host":{}}}
+{"schema_version":2,"project":"demo","runtime":"node","workload":{"parameters":{"n":1},"warmup":0,"iters":1,"runs":1},"metrics":{"us_per_op":{"label":"Wall time","unit":"µs/op","direction":"lower","method":"difference_per_op","scope":"operation"}},"results":[{"name":"a","sink":1,"metrics":{"us_per_op":{"status":"ok","value":1}},"observations":{},"statistics":{}}],"meta":{"captured_at":"2026-10-27T00:00:01Z","runtime":"v2","host":{"os":"Linux"}}}`
 
 func TestMalformedNDJSONRejectedBeforeWriting(t *testing.T) {
 	for _, input := range []string{parityNDJSON + "]", parityNDJSON + "}", parityNDJSON + "garbage"} {
@@ -172,58 +169,14 @@ func TestMalformedNDJSONRejectedBeforeWriting(t *testing.T) {
 	}
 }
 
-func TestLegacyRuntimeReports(t *testing.T) {
-	legacy := strings.NewReplacer(`"runtime":"node"`, `"lang":"node"`, `"runtime":"py"`, `"lang":"py"`).Replace(parityNDJSON)
-	oldPage, err := RenderReport([]byte(legacy))
-	if err != nil {
-		t.Fatal(err)
-	}
-	newPage, err := RenderReport([]byte(parityNDJSON))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if oldPage != newPage {
-		t.Fatal("legacy runtime IDs or versions changed during normalization")
-	}
-	oldEnv, err := Environment([]byte(legacy))
-	if err != nil {
-		t.Fatal(err)
-	}
-	newEnv, err := Environment([]byte(parityNDJSON))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(oldEnv) != string(newEnv) {
-		t.Fatal("legacy environment changed")
-	}
-	dir := t.TempDir()
-	oldPath, newPath := filepath.Join(dir, "old.ndjson"), filepath.Join(dir, "new.ndjson")
-	if err := os.WriteFile(oldPath, []byte(legacy), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(newPath, []byte(parityNDJSON), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	page, err := RenderCompare([]CompareRun{{Label: "old", Path: oldPath}, {Label: "new", Path: newPath}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	var rows []map[string]any
-	if err := json.Unmarshal([]byte(scriptData(page)), &rows); err != nil {
-		t.Fatal(err)
-	}
-	if len(rows) != 8 {
-		t.Fatalf("rows = %d", len(rows))
-	}
-	for _, row := range rows {
-		if _, old := row["lang"]; old || row["runtime"] == nil || row["runtime_version"] == nil {
-			t.Fatalf("bad normalized row: %v", row)
-		}
+func TestOldResultsRejected(t *testing.T) {
+	if _, err := RenderReport([]byte(`{"project":"old","runtime":"node","metric":"us_per_op","results":[]}`)); err == nil {
+		t.Fatal("legacy result accepted")
 	}
 }
 
 func TestLegacyHostnameIsNotExported(t *testing.T) {
-	input := []byte(`{"project":"demo","runtime":"node","metric":"time","unit":"us/op","n":1,"warmup":1,"iters":1,"runs":1,"meta":{"host":{"os":"Darwin","hostname":"private-machine"}},"results":[{"name":"loop","value":1,"total_ms":1,"iters":1}]}`)
+	input := []byte(`{"schema_version":2,"project":"demo","runtime":"node","workload":{"parameters":{"n":1},"warmup":0,"iters":1,"runs":1},"metrics":{"time":{"label":"time","unit":"us/op","direction":"lower","method":"difference_per_op","scope":"operation"}},"results":[{"name":"loop","sink":0,"metrics":{"time":{"status":"ok","value":1}},"observations":{},"statistics":{}}],"meta":{"host":{"os":"Darwin","hostname":"private-machine"}}}`)
 	html, err := RenderReport(input)
 	if err != nil {
 		t.Fatal(err)
@@ -243,7 +196,7 @@ func TestLegacyHostnameIsNotExported(t *testing.T) {
 }
 
 func TestWorkloadMetadataProjection(t *testing.T) {
-	raw := []byte(`{"project":"demo","runtime":"node","metric":"throughput","meta":{"parameters":{"size":64,"distribution":"uniform"},"unit":"items/s"},"results":[{"name":"loop","value":20}]}`)
+	raw := []byte(`{"schema_version":2,"project":"demo","runtime":"node","workload":{"parameters":{"size":64,"distribution":"uniform"},"warmup":0,"iters":1,"runs":1},"metrics":{"throughput":{"label":"throughput","unit":"items/s","direction":"lower","method":"difference_per_op","scope":"operation"}},"results":[{"name":"loop","sink":0,"metrics":{"throughput":{"status":"ok","value":20}},"observations":{},"statistics":{}}],"meta":{"parameters":{"size":64,"distribution":"uniform"},"unit":"items/s"}}`)
 	rows, _, err := flatten(raw, "")
 	if err != nil {
 		t.Fatal(err)

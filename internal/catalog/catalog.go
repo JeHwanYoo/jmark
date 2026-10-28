@@ -22,7 +22,7 @@ var (
 	probePat = regexp.MustCompile(probePattern)
 
 	runtimeKeys = []string{"family", "needs", "build", "run", "version", "probes"}
-	benchKeys   = []string{"n", "warmup", "iters", "runs", "probes"}
+	benchKeys   = []string{"n", "warmup", "iters", "runs", "probes", "metrics"}
 
 	placeholders = map[string]bool{
 		"runner": true, "input": true, "approach": true, "bin": true,

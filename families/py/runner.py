@@ -2,6 +2,7 @@
 # argv: <input> <approach> <n> <iters> [<probe_out> <hook>...]  (probe args only in the untimed probe pass)
 import importlib.util
 import sys
+from pathlib import Path
 
 sys.dont_write_bytecode = True
 
@@ -22,6 +23,7 @@ def main():
     data = make_input(int(n))
 
     hooks = [load(p, f"_jmark_hook_{i}") for i, p in enumerate(hook_paths)] if probe_out else []
+    descriptions = [h.describe() for h in hooks]
     before = [h.snapshot() for h in hooks]
     sink = 0
     for _ in range(count):
@@ -32,9 +34,9 @@ def main():
     sys.stdout.flush()
     if probe_out:
         with open(probe_out, "w") as out:
-            for start, end in zip(before, after):
+            for path, description, start, end in zip(hook_paths, descriptions, before, after):
                 for k, v in end.items():
-                    out.write(f"{k}\t{v - start.get(k, 0)}\n")
+                    out.write(f"{Path(path).stem}.{k}\t{description[k]['unit']}\t{description[k]['direction']}\t{v - start.get(k, 0)}\n")
 
 
 main()

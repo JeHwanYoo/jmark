@@ -398,6 +398,84 @@ a:focus-visible {
   border-bottom: 1px solid #edf0f5;
 }
 @media (max-width: 600px) {
-  .report-section > summary { padding: 18px 16px; }
-  .env-row { padding: 16px; }
+  .report-section > summary {
+    padding: 18px 16px;
+  }
+  .env-row {
+    padding: 16px;
+  }
+}
+
+.report-section > pre {
+  max-width: 100%;
+  overflow-x: auto;
+  font-size: 12px;
+  padding: 16px;
+}
+
+.metric-picker {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+@media (max-width: 600px) {
+  .metric-picker {
+    width: 100%;
+  }
+  .metric-picker > .search-select {
+    width: auto;
+    flex: 1;
+  }
+}
+
+.print-document {
+  position: fixed;
+  left: -10000px;
+  top: 0;
+  width: 186mm;
+  color: #172033;
+  background: white;
+}
+.print-page h1 {
+  font-size: 22px;
+  margin: 0 0 10px;
+}
+.print-brand, .print-meta, .print-footer {
+  font-size: 11px;
+  color: #526078;
+  overflow-wrap: anywhere;
+}
+.print-brand {
+  font-weight: 650;
+  margin: 0 0 16px;
+}
+.print-meta {
+  margin: 0 0 8px;
+}
+.print-page .legend {
+  margin: 16px 0 0;
+}
+.print-footer {
+  text-align: right;
+}
+@page {
+  size: A4 portrait;
+  margin: 12mm;
+}
+@media print {
+  #app:has(.print-document) > header, #app:has(.print-document) > main {
+    display: none;
+  }
+  .print-document {
+    position: static;
+    width: auto;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .print-page {
+    break-after: page;
+  }
+  .print-page:last-child {
+    break-after: auto;
+  }
 }

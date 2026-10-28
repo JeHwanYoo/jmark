@@ -204,7 +204,7 @@ print(5 if iters == 0 else iters)
 	if err != nil {
 		t.Fatalf("plan: %v\nstderr: %s", err, stderr.String())
 	}
-	lines := sampleLines(observations.Samples)
+	lines := sampleLines(observations.Approaches)
 	if len(lines) != 2 {
 		t.Fatalf("lines %#v", lines)
 	}
@@ -296,9 +296,8 @@ open(state, "w").write(str(n + 1))
 deltas = [1, 5, 10, 14]
 d = deltas[n]
 with open(out, "w") as fh:
-    fh.write("z\t%d\n" % d)
-    fh.write("a\t%d\n" % (d * 2))
-    fh.write("skip this\n")
+    fh.write("z\tcount\tlower\t%d\n" % d)
+    fh.write("a\tcount\tlower\t%d\n" % (d * 2))
 `)
 	state := filepath.Join(t.TempDir(), "n")
 	cmd := "python3 " + script + " {iters} {probe_out} " + state
@@ -406,7 +405,7 @@ lo = int(sys.argv[3])
 hi = int(sys.argv[4])
 delta = lo if iters == int(sys.argv[5]) else hi
 with open(out, "w") as fh:
-    fh.write("alloc\t%d\n" % delta)
+    fh.write("alloc\tcount\tlower\t%d\n" % delta)
 `)
 	// argv: iters, probe_out, loDelta, hiDelta, warmup
 	cmd := "python3 " + script + " {iters} {probe_out} " + strconv.Itoa(loDelta) + " " + strconv.Itoa(hiDelta) + " 0"
@@ -490,10 +489,10 @@ func testPlan(t *testing.T, raw []byte) benchmark.Plan {
 	}
 	return plan
 }
-func sampleLines(samples []benchmark.Sample) []string {
+func sampleLines(samples []benchmark.ApproachObservation) []string {
 	var lines []string
 	for _, s := range samples {
-		lines = append(lines, s.Name+"\t"+string(s.Sink)+"\t"+formatFloat(s.Lo)+"\t"+formatFloat(s.Hi))
+		lines = append(lines, s.Name+"\t"+string(s.Sink)+"\t"+formatFloat(mid(s.Observations["time_wall_clock"].Baseline))+"\t"+formatFloat(mid(s.Observations["time_wall_clock"].Workload)))
 	}
 	return lines
 }
@@ -504,3 +503,5 @@ func probeLines(samples []benchmark.ProbeSample) string {
 	}
 	return b.String()
 }
+
+func mid(xs []float64) float64 { v, _ := median(xs); return v }

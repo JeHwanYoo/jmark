@@ -6,11 +6,17 @@ export const colors = [
   "#db2777",
   "#475569",
 ];
-export const unit = (row) => {
-  const metric = typeof row === "string" ? row : row?.metric;
-  return (typeof row === "object" && row?.unit) ||
-    (metric === "us_per_op" ? "µs/op" : metric) || "—";
-};
+export const unit = (row) => row?.unit || "—";
+export function displayRow(row) {
+ if (!Number.isFinite(row.value)) return row;
+ let factor=1, label=row.unit;
+ if(row.unit==="s/op") {factor=1e6;label="µs/op";}
+ if(row.unit==="B") {factor=1/1048576;label="MiB";}
+ if(row.unit==="ratio") {factor=100;label="%";}
+ return {...row,value:row.value*factor,unit:label};
+}
+export const metricKey = r => JSON.stringify([r.metric,r.unit,r.method,r.scope]);
+export const metrics = rows => [...new Map(rows.map(r=>[metricKey(r),{key:metricKey(r),label:r.label || r.metric}])).values()];
 export function parameters(row) {
   const values = row?.parameters ?? (row?.n != null ? { n: row.n } : {});
   return Object.entries(values).sort(([a], [b]) => a.localeCompare(b));
@@ -23,12 +29,12 @@ export const format = (value) =>
     ? new Intl.NumberFormat("en", { maximumSignificantDigits: 5 }).format(value)
     : "—";
 export const conditionKey = (r) =>
-  JSON.stringify([r.project, r.metric, unit(r), parameters(r), r.warmup, r.iters_meta, r.runs]);
+  JSON.stringify([r.project, parameters(r), r.warmup, r.iters_meta, r.runs]);
 export function conditions(rows) {
   return [...new Map(rows.map((r) => [conditionKey(r), r])).entries()].map(
     ([key, r]) => ({
       key,
-      label: `${r.project} · ${unit(r)}${parameters(r).map(([key, value]) => ` · ${key}=${parameterValue(value)}`).join("")} · warmup=${r.warmup ?? "—"} · iters=${r.iters_meta ?? "—"} · runs=${r.runs ?? "—"}`,
+      label: `${r.project}${parameters(r).map(([key, value]) => ` · ${key}=${parameterValue(value)}`).join("")} · warmup=${r.warmup ?? "—"} · iters=${r.iters_meta ?? "—"} · runs=${r.runs ?? "—"}`,
     }),
   );
 }
@@ -140,3 +146,10 @@ export function chartOption(
     })),
   };
 }
+
+export const orderRows = (rows,sort) => [...rows].sort((a,b)=> {
+ if(sort!=="value") return a.runtime.localeCompare(b.runtime);
+ if(!Number.isFinite(a.value)) return Number.isFinite(b.value)?1:0;
+ if(!Number.isFinite(b.value)) return -1;
+ return (a.direction==="higher"?-1:1)*(a.value-b.value);
+});

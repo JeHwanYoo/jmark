@@ -1,31 +1,97 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://jmark.local/schema/result.schema.json",
-  "title": "jmark benchmark result",
   "type": "object",
   "additionalProperties": false,
   "required": [
+    "schema_version",
     "project",
     "runtime",
-    "metric",
+    "workload",
+    "metrics",
     "results",
     "meta"
   ],
   "properties": {
+    "schema_version": {
+      "const": 2
+    },
     "project": {
       "type": "string",
-      "minLength": 1,
-      "description": "Benchmark project id (directory under benches/)"
+      "minLength": 1
     },
     "runtime": {
       "type": "string",
-      "minLength": 1,
-      "description": "Runtime id from runtimes/<id>.toml"
+      "minLength": 1
     },
-    "metric": {
-      "type": "string",
-      "const": "us_per_op",
-      "description": "Wall time per op in microseconds, from the host external clock (hyperfine differential)"
+    "workload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "parameters",
+        "warmup",
+        "iters",
+        "runs"
+      ],
+      "properties": {
+        "parameters": {
+          "type": "object"
+        },
+        "warmup": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "iters": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "runs": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "label",
+          "unit",
+          "direction",
+          "method",
+          "scope"
+        ],
+        "properties": {
+          "label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "unit": {
+            "type": "string",
+            "minLength": 1
+          },
+          "direction": {
+            "enum": [
+              "lower",
+              "higher",
+              "neutral"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "minLength": 1
+          },
+          "scope": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
     },
     "results": {
       "type": "array",
@@ -35,56 +101,96 @@
         "additionalProperties": false,
         "required": [
           "name",
-          "value",
-          "iters",
-          "sink"
+          "sink",
+          "metrics",
+          "observations",
+          "statistics"
         ],
         "properties": {
           "name": {
             "type": "string",
             "minLength": 1
           },
-          "value": {
-            "type": "number",
-            "exclusiveMinimum": 0
-          },
-          "iters": {
-            "type": "integer",
-            "minimum": 1
-          },
-          "total_ms": {
-            "type": "number",
-            "minimum": 0
-          },
           "sink": {
             "type": "number"
+          },
+          "metrics": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "status",
+                    "value"
+                  ],
+                  "properties": {
+                    "status": {
+                      "const": "ok"
+                    },
+                    "value": {
+                      "type": "number"
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "status",
+                    "reason"
+                  ],
+                  "properties": {
+                    "status": {
+                      "const": "unavailable"
+                    },
+                    "reason": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "observations": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "baseline",
+                "workload"
+              ],
+              "properties": {
+                "baseline": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "workload": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          },
+          "statistics": {
+            "type": "object"
           }
         }
       }
     },
     "meta": {
-      "type": "object",
-      "additionalProperties": true,
-      "required": [
-        "n",
-        "warmup",
-        "iters"
-      ],
-      "properties": {
-        "n": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "warmup": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "iters": {
-          "type": "integer",
-          "minimum": 1
-        }
-      },
-      "description": "Workload params plus host measurement keys (runs, clock, method, probes…)"
+      "type": "object"
     }
-  }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jmark.local/schema/result.schema.json",
+  "title": "jmark multi-metric result v2"
 }

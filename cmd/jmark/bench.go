@@ -5,20 +5,23 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	goruntime "runtime"
 	"strings"
 	"time"
 
 	"github.com/JeHwanYoo/jmark/internal/artifact"
+	"github.com/JeHwanYoo/jmark/internal/benchmark"
 	"github.com/JeHwanYoo/jmark/internal/catalog"
 	"github.com/JeHwanYoo/jmark/internal/measure"
 	"github.com/JeHwanYoo/jmark/internal/result"
 	"github.com/JeHwanYoo/jmark/internal/source"
 )
 
-const benchUsage = `usage: bench [<id>] [--runtime <runtime>] [--format stream|ndjson|html]
+const benchUsage = `usage: bench [<id>] [--runtime <runtime>] [--format stream|ndjson|html] [--metrics <id,...>]
 
   <id>       project id; omit on a terminal to choose project, runtime, and format with fzf
   --runtime     run one runtime (default: every available runtime of the project)
+  --metrics    replace project metrics (default: wall_time,cpu_time,peak_rss,throughput)
   --format   stream  Result NDJSON on stdout (default, pipeline)
              ndjson  write artifacts/private/<id>/<timestamp>/result.ndjson; path on stdout
              html    write result.ndjson + report.html under that dir; html path on stdout
@@ -32,6 +35,7 @@ type benchOpts struct {
 	runtimeSet bool
 	format     string
 	formatSet  bool
+	metrics    []string
 }
 
 func (a *app) cmdBench(args []string) error {
@@ -93,11 +97,17 @@ func (a *app) cmdBench(args []string) error {
 	sources := source.Snapshot{}
 	var lines [][]byte
 	var objs []map[string]any
-	for _, runtime := range runtimes {
+	for i, runtime := range runtimes {
 		plan, err := a.cat.Plan(opts.id, runtime)
 		if err != nil {
 			a.writeErr(err)
 			return fmt.Errorf("%s: could not build plan; no results printed", runtime)
+		}
+		if opts.metrics != nil {
+			plan.Params.Metrics = opts.metrics
+		}
+		if i == 0 {
+			a.warnUnsupportedMetrics(plan.Params.Metrics)
 		}
 		snapshot, err := source.Capture(a.root, plan)
 		if err != nil {
@@ -240,6 +250,24 @@ func parseBench(args []string) (benchOpts, error) {
 				return o, fmt.Errorf("bench: --runtime needs a value")
 			}
 			o.runtimeSet = true
+		case a == "--metrics" || strings.HasPrefix(a, "--metrics="):
+			if o.metrics != nil {
+				return o, fmt.Errorf("bench: --metrics given more than once")
+			}
+			value := strings.TrimPrefix(a, "--metrics=")
+			if a == "--metrics" {
+				if i+1 >= len(args) {
+					return o, fmt.Errorf("bench: --metrics needs a value")
+				}
+				i++
+				value = args[i]
+			}
+			o.metrics = strings.Split(value, ",")
+			for _, id := range o.metrics {
+				if _, ok := benchmark.Metrics[id]; !ok {
+					return o, fmt.Errorf("bench: unknown metric %q", id)
+				}
+			}
 		case a == "--format":
 			if i+1 >= len(args) {
 				return o, fmt.Errorf("bench: --format needs a value")
@@ -264,6 +292,22 @@ func parseBench(args []string) (benchOpts, error) {
 		}
 	}
 	return o, nil
+}
+
+// warnUnsupportedMetrics names requested metrics this platform's collector cannot report.
+func (a *app) warnUnsupportedMetrics(ids []string) {
+	if len(ids) == 0 {
+		ids = benchmark.DefaultMetrics
+	}
+	var unsupported []string
+	for _, id := range ids {
+		if !benchmark.MetricSupported(id, goruntime.GOOS) {
+			unsupported = append(unsupported, id)
+		}
+	}
+	if len(unsupported) > 0 {
+		a.warn("metrics unsupported on %s will be reported unavailable: %s", goruntime.GOOS, strings.Join(unsupported, " "))
+	}
 }
 
 func (o *benchOpts) addID(arg string) error {

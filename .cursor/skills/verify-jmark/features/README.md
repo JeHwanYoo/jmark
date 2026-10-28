@@ -20,7 +20,7 @@ Maintained source for verifying user-facing jmark CLI behavior. Read this index,
 ## Proof and skip reporting
 
 - Proof includes command, stdout, stderr, and exit code.
-- Bench proof: each stdout line is one JSON object with `project`, `runtime`, `metric=us_per_op`, non-empty `results` (`name`, `value>0`, `iters`, `sink`), and `meta` with `n`, `warmup`, `iters`, `clock=hyperfine`.
+- Bench proof: each stdout line is one JSON object with `project`, `runtime`, `schema_version=2` and metric definitions, non-empty `results` (`name`, `metrics`, `observations`, `sink`), and `meta` with collector and host metadata; workload contains parameters and counts.
 - Create proof includes on-disk template files plus `just list` membership, then successful cleanup.
 - Record feature id and entry point with every artifact.
 - Report a runtime whose toolchain is missing as skipped with the missing command; do not call it verified.

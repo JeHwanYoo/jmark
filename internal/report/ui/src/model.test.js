@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { conditions, selectRows, chartOption, chartData } from "./model.js";
 const base = {
   project: "demo",
-  metric: "us_per_op",
+  metric: "wall_time",
+ unit: "s/op",
   n: 100,
   warmup: 1,
   iters_meta: 20,
@@ -17,13 +18,13 @@ test("incompatible workloads never share a chart", () => {
     base,
     { ...base, n: 200 },
     { ...base, project: "other" },
-    { ...base, metric: "bytes" },
+
     { ...base, warmup: 2 },
     { ...base, iters_meta: 40 },
     { ...base, runs: 10 },
   ];
   const groups = conditions(rows);
-  assert.equal(groups.length, 7);
+  assert.equal(groups.length, 6);
   assert.deepEqual(selectRows(rows, groups[0].key, "", ""), [base]);
 });
 test("filters retain duplicate measurements and distinguish runs", () => {
@@ -91,10 +92,21 @@ test("workload metadata supports arbitrary parameters and units", () => {
   const larger = { ...first, parameters: { size: 128, distribution: "uniform" } };
   const otherUnit = { ...first, unit: "MB/s" };
   const groups = conditions([first, reordered, larger, otherUnit]);
-  assert.equal(groups.length, 3);
+  assert.equal(groups.length, 2);
   assert.deepEqual(selectRows([first, reordered, larger], groups[0].key, "", ""), [first, reordered]);
   assert.match(groups[0].label, /size=64/);
   assert.doesNotMatch(groups[0].label, /n=100/);
   assert.equal(chartOption([first], "linear").xAxis.name, "items/s");
   assert.match(chartOption([first], "linear").tooltip.formatter({data: {row: first}}), /items\/s/);
+});
+
+test("metric definitions isolate units, methods and scopes independently of workloads", async () => {
+ const {metrics,displayRow,orderRows}=await import("./model.js");
+ const rows=[{...base,metric:"custom",unit:"score",method:"absolute",scope:"process",direction:"higher",value:2},{...base,metric:"custom",unit:"score",method:"absolute",scope:"process",direction:"higher",value:5}];
+ assert.equal(metrics(rows).length,1);
+ assert.equal(metrics([...rows,{...rows[0],scope:"operation"}]).length,2);
+ assert.equal(orderRows(rows,"value")[0].value,5);
+ assert.equal(displayRow({...base,unit:"B",value:1048576}).value,1);
+ assert.equal(displayRow({...base,unit:"s/op",value:0.000002}).value,2);
+ assert.equal(displayRow(rows[0]).unit,"score");
 });

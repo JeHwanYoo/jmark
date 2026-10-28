@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"html"
 	"strings"
+
+	"github.com/JeHwanYoo/jmark/internal/benchmark"
 )
 
 //go:embed page.html
@@ -20,6 +22,20 @@ var appCSS string
 //go:embed ui/src/assets/favicon.ico
 var favicon []byte
 
+// metricCatalog lets the guide explain metrics a run did not request.
+func metricCatalog() []byte {
+	type entry struct {
+		Label    string   `json:"label"`
+		Readings []string `json:"readings"`
+	}
+	metrics := map[string]entry{}
+	for id, d := range benchmark.Metrics {
+		metrics[id] = entry{d.Label, d.Readings}
+	}
+	catalog, _ := json.Marshal(map[string]any{"metrics": metrics, "readings": benchmark.Readings})
+	return catalog
+}
+
 func fillPageData(project, data, dataID string, options Options) string {
 	sources, _ := json.Marshal(options.Sources)
 	return strings.NewReplacer(
@@ -27,6 +43,7 @@ func fillPageData(project, data, dataID string, options Options) string {
 		"@@DATA_ID@@", dataID,
 		"@@INDEX_HREF@@", html.EscapeString(options.IndexHref),
 		"@@SOURCES@@", embedJSON(string(sources)),
+		"@@METRICS@@", embedJSON(string(metricCatalog())),
 		"@@DATA@@", embedJSON(data),
 		"@@JS@@", strings.ReplaceAll(appJS, "</script", `<\/script`),
 		"@@FAVICON@@", base64.StdEncoding.EncodeToString(favicon),

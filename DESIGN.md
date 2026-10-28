@@ -14,7 +14,7 @@ available in the results table and Environment section.
 ## Information hierarchy
 
 1. Project and result count.
-2. Workload, runtime, run, sorting, and scale controls.
+2. Workload, metric, runtime, run, sorting, and scale controls.
 3. One comparison chart, with Y-axis and series selectors and a visible X-axis unit.
 4. Exact result table.
 5. Collapsed Environment details.
@@ -34,8 +34,9 @@ hero copy, or summary cards that compete with the measured results.
   Log scale uses points and is available only for strictly positive values.
 - Keep unselected varying dimensions in category labels so measurements remain
   distinguishable. Omit constant run identifiers from chart labels.
-- Separate project, metric, input size, warmup, iteration count, and sample count
-  combinations into workloads. Never combine incompatible units or inputs.
+- Separate project, input parameters, warmup, iteration count, and sample count
+  combinations into workloads. Provide an independent Metric selector, isolating
+  incompatible metric IDs, units, methods and measurement scopes. Never combine incompatible units or inputs.
 - Preserve duplicate measurements and missing combinations. Do not silently
   average, sum, overwrite, or substitute zero for missing results.
 - Assign stable series colors across filtering. Use labels and exact values in
@@ -141,3 +142,26 @@ snapshot with syntax highlighting, readable monospace text, and horizontal scrol
 inside code blocks. Provide a Markdown download. Show “Source snapshot unavailable”
 when a saved run has no snapshot. Current working files must not replace missing
 historical code. Raw Markdown HTML and remote images are disabled.
+
+## Metric presentation
+
+Units, measurement scope, method and preferred direction come from saved metric
+definitions. Time values stored in s/op display in µs/op; bytes display in MiB;
+ratios display as percentages. Unknown units display without conversion. Value
+sorting places larger values first for higher-is-better definitions and smaller
+values first otherwise. Missing values follow measured values and retain reasons
+in the table. They never become zero bars. Measurement details show phase-level
+statistics and samples; no per-operation latency percentiles are inferred.
+
+## Metric help
+
+Place a labelled (?) link next to the Metric selector. Open the selected metric's
+explanation in a separate tab, preserving the original report. The guide shares
+its definitions and measurement prose with `METRICS.md`, offers all built-in
+metrics, and works without a network connection. Hash navigation keeps help inside
+the standalone report file.
+
+Use labelled examples distinct from measured data. Animate the quantity being
+explained and provide play, pause, replay and timeline controls. Play once, pause
+when the document is hidden, and start with a still frame for reduced-motion
+preferences. Keep descriptions and controls usable at 320px and 390px widths.

@@ -16,15 +16,35 @@ func (m *Measure) Run(plan benchmark.Plan) (benchmark.Measurement, error) {
 		return benchmark.Measurement{}, err
 	}
 	defer cleanup()
-	samples, err := m.timings(plan)
-	if err != nil {
-		return benchmark.Measurement{}, err
+	rows := []benchmark.ApproachObservation{}
+	index := map[string]int{}
+	for _, collector := range []Collector{hyperfineCollector{m}, probeCollector{m}} {
+		collected, err := collector.Collect(plan)
+		if err != nil {
+			return benchmark.Measurement{}, err
+		}
+		for _, row := range collected {
+			i, ok := index[row.Name]
+			if !ok {
+				index[row.Name] = len(rows)
+				rows = append(rows, row)
+				continue
+			}
+			if rows[i].Observations == nil {
+				rows[i].Observations = map[string]benchmark.Observation{}
+			}
+			if rows[i].Definitions == nil {
+				rows[i].Definitions = map[string]benchmark.MetricDefinition{}
+			}
+			for id, o := range row.Observations {
+				rows[i].Observations[id] = o
+			}
+			for id, d := range row.Definitions {
+				rows[i].Definitions[id] = d
+			}
+		}
 	}
-	probes, err := m.probes(plan)
-	if err != nil {
-		return benchmark.Measurement{}, err
-	}
-	return benchmark.Measurement{Samples: samples, Probes: probes}, nil
+	return benchmark.Measurement{Approaches: rows}, nil
 }
 
 func (m *Measure) prepare(plan benchmark.Plan) (benchmark.Plan, func(), error) {

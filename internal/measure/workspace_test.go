@@ -21,7 +21,7 @@ while [ "$#" -gt 0 ]; do
  if [ "$1" = "--export-json" ]; then shift; out=$1; fi
  shift
 done
-printf '{"results":[{"median":1,"parameters":{"iters":"0"}},{"median":2,"parameters":{"iters":"2"}}]}' > "$out"
+printf '{"schema_version":2,"results":[{"measurements":[{"time_wall_clock":{"value":1,"unit":"second"}}],"parameters":{"iters":{"value":"0"}}},{"measurements":[{"time_wall_clock":{"value":2,"unit":"second"}}],"parameters":{"iters":{"value":"2"}}}]}' > "$out"
 `
 	if err := os.WriteFile(filepath.Join(tools, "hyperfine"), []byte(timer), 0755); err != nil {
 		t.Fatal(err)
@@ -29,7 +29,7 @@ printf '{"results":[{"median":1,"parameters":{"iters":"0"}},{"median":2,"paramet
 	t.Setenv("PATH", tools+string(os.PathListSeparator)+os.Getenv("PATH"))
 	runner := filepath.Join(root, "runner")
 	source := `#!/bin/sh
-if [ -n "$2" ]; then printf 'alloc\t%s\n' "$(( $1 * 2 ))" > "$2"; fi
+if [ -n "$2" ]; then printf 'alloc\tcount\tlower\t%s\n' "$(( $1 * 2 ))" > "$2"; fi
 printf '%s\n' "$1"
 `
 	if err := os.WriteFile(runner, []byte(source), 0755); err != nil {
@@ -71,7 +71,7 @@ printf '%s\n' "$1"
 				t.Error(err)
 				return
 			}
-			if len(result.Samples) != 1 || result.Samples[0].Sink != "1" || len(result.Probes) != 1 || result.Probes[0].Hi != 4 {
+			if len(result.Approaches) != 1 || result.Approaches[0].Sink != "1" || len(result.Approaches[0].Definitions) != 1 || result.Approaches[0].Observations["probe.alloc"].Workload[0] != 4 {
 				t.Errorf("observations: %+v", result)
 			}
 		})
