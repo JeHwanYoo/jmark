@@ -36,10 +36,17 @@ func metricCatalog() []byte {
 	return catalog
 }
 
-func fillPageData(project, data, dataID string, options Options) string {
+func fillPageData(project, description, data, dataID string, options Options) string {
 	sources, _ := json.Marshal(options.Sources)
+	canonical := ""
+	if options.URL != "" {
+		url := html.EscapeString(options.URL)
+		canonical = `<link rel="canonical" href="` + url + `"><meta property="og:url" content="` + url + `">`
+	}
 	return strings.NewReplacer(
 		"@@PROJECT@@", html.EscapeString(project),
+		"@@DESCRIPTION@@", html.EscapeString(description),
+		"@@CANONICAL@@", canonical,
 		"@@DATA_ID@@", dataID,
 		"@@INDEX_HREF@@", html.EscapeString(options.IndexHref),
 		"@@SOURCES@@", embedJSON(string(sources)),

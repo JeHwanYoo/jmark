@@ -33,7 +33,7 @@
     border-color: #2563eb;
   }
   .metric-help:focus-visible {
-    outline: 3px solid #93b4fc;
+    outline: 3px solid #2563eb;
     outline-offset: 3px;
   }
   @media (pointer: coarse) {

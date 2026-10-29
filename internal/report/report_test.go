@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -24,10 +25,24 @@ func TestRenderReportPayload(t *testing.T) {
 	if strings.Contains(scriptData(page), "<") {
 		t.Fatal("unsafe script payload")
 	}
-	for _, marker := range []string{"@@PROJECT@@", "@@DATA_ID@@", "@@INDEX_HREF@@", "@@SOURCES@@", "@@DATA@@", "@@JS@@", "@@CSS@@"} {
+	for _, marker := range []string{"@@PROJECT@@", "@@DESCRIPTION@@", "@@CANONICAL@@", "@@DATA_ID@@", "@@INDEX_HREF@@", "@@SOURCES@@", "@@DATA@@", "@@JS@@", "@@CSS@@"} {
 		if strings.Contains(page, marker) {
 			t.Fatalf("unresolved template marker: %s", marker)
 		}
+	}
+}
+
+func TestReportDescribesResults(t *testing.T) {
+	page, err := RenderReport([]byte(parityNDJSON))
+	if err != nil {
+		t.Fatal(err)
+	}
+	match := regexp.MustCompile(`<meta name="description" content="([^"]*)">`).FindStringSubmatch(page)
+	if match == nil || !strings.HasPrefix(match[1], "demo benchmark comparing ") {
+		t.Fatalf("description: %q", match)
+	}
+	if strings.Contains(page, `rel="canonical"`) {
+		t.Fatal("local report claims a canonical URL")
 	}
 }
 

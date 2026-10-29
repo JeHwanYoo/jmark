@@ -78,9 +78,9 @@
       <table>
         <thead
           ><tr
-            >{#if showRun}<th>Run</th>{/if}<th>Runtime</th><th>Approach</th><th
+            >{#if showRun}<th scope="col">Run</th>{/if}<th scope="col">Runtime</th><th scope="col">Approach</th><th scope="col"
               class="number">{section.unit}</th
-            ><th>Status</th><th class="number">Iterations</th></tr
+            ><th scope="col">Status</th><th scope="col" class="number">Iterations</th></tr
           ></thead
         ><tbody
           >{#each section.rows as row}<tr

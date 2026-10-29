@@ -130,12 +130,12 @@
   .back-link span { font-size: 18px; line-height: 1; }
   .metrics-guide { max-width: 1100px; display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 56px; align-items: start; }
   .metric-directory { position: sticky; top: 24px; display: flex; flex-direction: column; gap: 2px; }
-  .metric-directory h2 { margin: 0 0 12px; padding: 0 12px; color: #65748b; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+  .metric-directory h2 { margin: 0 0 12px; padding: 0 12px; color: #5f6c80; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
   .metric-links { display: flex; flex-direction: column; gap: 2px; }
   .metric-directory a { display: flex; flex-direction: column; gap: 2px; padding: 9px 12px; border-radius: 7px; color: #526078; font-size: 14px; text-decoration: none; }
-  .metric-directory a small { color: #7b8797; font-size: 12px; font-weight: 400; }
+  .metric-directory a small { color: #5f6c80; font-size: 12px; font-weight: 400; }
   .other-metrics { margin-top: 16px; }
-  .other-metrics summary { cursor: pointer; padding: 9px 12px; color: #65748b; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+  .other-metrics summary { cursor: pointer; padding: 9px 12px; color: #5f6c80; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
   .other-metrics summary span { margin-left: 4px; font-variant-numeric: tabular-nums; }
   .metric-directory a:hover { background: #e9edf4; color: #172033; }
   .metric-directory a[aria-current="page"] { background: #e4edff; color: #1d4ed8; font-weight: 600; }
@@ -146,8 +146,8 @@
   .metric-status[data-kind="available"] { border-color: #0d9488; background: #effaf8; }
   .metric-support { display: grid; gap: 10px; margin: 22px 0 0; font-size: 13px; }
   .metric-support div { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 12px; align-items: baseline; }
-  .metric-support dt { color: #65748b; }
-  .metric-support dd { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0; color: #7b8797; }
+  .metric-support dt { color: #5f6c80; }
+  .metric-support dd { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0; color: #5f6c80; }
   .metric-support code { font-family: var(--font-code); font-size: 12px; }
   .metric-support .supported { color: #27334a; }
   .metric-support .host { font-weight: 600; }

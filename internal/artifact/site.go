@@ -4,16 +4,29 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/JeHwanYoo/jmark/internal/report"
 )
 
 // BuildSite creates a static site exclusively from public result files.
-func BuildSite(root string) (string, error) {
+// A non-empty baseURL is the site's absolute address; it adds canonical links,
+// sitemap.xml, and robots.txt.
+func BuildSite(root, baseURL string) (string, error) {
+	if baseURL != "" && !strings.HasSuffix(baseURL, "/") {
+		baseURL += "/"
+	}
+	page := func(path string) string {
+		if baseURL == "" {
+			return ""
+		}
+		return baseURL + path
+	}
 	runs, err := List(root, "public", "")
 	if err != nil {
 		return "", err
@@ -41,11 +54,12 @@ func BuildSite(root string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		html, err := report.RenderReportWithOptions(data, report.Options{IndexHref: "../../index.html", Sources: string(markdown)})
+		parts := strings.Split(key, "/")
+		href := parts[1] + "/" + parts[2] + "/report.html"
+		html, err := report.RenderReportWithOptions(data, report.Options{IndexHref: "../../index.html", Sources: string(markdown), URL: page(href)})
 		if err != nil {
 			return "", fmt.Errorf("%s: %w", key, err)
 		}
-		parts := strings.Split(key, "/")
 		destination := filepath.Join(stage, parts[1], parts[2])
 		if err := os.MkdirAll(destination, 0755); err != nil {
 			return "", err
@@ -63,7 +77,7 @@ func BuildSite(root string) (string, error) {
 				return "", err
 			}
 		}
-		entry := report.IndexRun{Project: parts[1], Run: parts[2], Href: parts[1] + "/" + parts[2] + "/report.html", Runtimes: []string{}}
+		entry := report.IndexRun{Project: parts[1], Run: parts[2], Href: href, Runtimes: []string{}}
 		scanner := bufio.NewScanner(bytes.NewReader(data))
 		scanner.Buffer(make([]byte, 4096), 16*1024*1024)
 		seen := map[string]bool{}
@@ -95,12 +109,19 @@ func BuildSite(root string) (string, error) {
 		}
 		index = append(index, entry)
 	}
-	page, err := report.RenderIndex(index)
+	indexPage, err := report.RenderIndex(index, page(""))
 	if err != nil {
 		return "", err
 	}
-	if err := os.WriteFile(filepath.Join(stage, "index.html"), []byte(page), 0644); err != nil {
-		return "", err
+	files := map[string][]byte{"index.html": []byte(indexPage)}
+	if baseURL != "" {
+		files["sitemap.xml"] = sitemap(baseURL, index)
+		files["robots.txt"] = []byte("User-agent: *\nAllow: /\nSitemap: " + baseURL + "sitemap.xml\n")
+	}
+	for name, body := range files {
+		if err := os.WriteFile(filepath.Join(stage, name), body, 0644); err != nil {
+			return "", err
+		}
 	}
 	if err := os.WriteFile(filepath.Join(stage, ".nojekyll"), nil, 0644); err != nil {
 		return "", err
@@ -113,6 +134,26 @@ func BuildSite(root string) (string, error) {
 		return "", err
 	}
 	return filepath.Join(".jmark", "site", "index.html"), nil
+}
+
+func sitemap(baseURL string, runs []report.IndexRun) []byte {
+	var b bytes.Buffer
+	b.WriteString(xml.Header + `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">` + "\n")
+	entry := func(loc, captured string) {
+		b.WriteString("<url><loc>")
+		_ = xml.EscapeText(&b, []byte(loc))
+		b.WriteString("</loc>")
+		if t, err := time.Parse(time.RFC3339, captured); err == nil {
+			b.WriteString("<lastmod>" + t.UTC().Format(time.RFC3339) + "</lastmod>")
+		}
+		b.WriteString("</url>\n")
+	}
+	entry(baseURL, "")
+	for _, run := range runs {
+		entry(baseURL+run.Href, run.CapturedAt)
+	}
+	b.WriteString("</urlset>\n")
+	return b.Bytes()
 }
 
 func optionalFile(path string) ([]byte, error) {

@@ -10,7 +10,7 @@
 
 <style>
   .repository-link {
-    color: #65748b;
+    color: #5f6c80;
     font-size: 14px;
     display: inline-flex;
     align-items: center;

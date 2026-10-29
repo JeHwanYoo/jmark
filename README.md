@@ -64,7 +64,7 @@ Private runs are Git-ignored. Public runs live in `artifacts/public/<project>/<r
 just public                       # choose private runs to make public
 just public <project>/<run>        # move one run to public
 just private <project>/<run>       # move it back to private
-just site                         # build .jmark/site/index.html
+just site [--base-url <url>]      # build .jmark/site/index.html; a base URL adds canonical links and sitemap.xml
 ```
 
 These commands only move directories; stage the result with `git add -A artifacts/public`. On each push to the default branch, the Pages workflow publishes public runs (set Settings → Pages → Source to GitHub Actions).

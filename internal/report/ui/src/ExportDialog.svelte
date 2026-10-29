@@ -436,7 +436,7 @@
   .none {
     margin: 0;
     font-size: 12px;
-    color: #65748b;
+    color: #5f6c80;
   }
   h2 {
     font-size: 16px;

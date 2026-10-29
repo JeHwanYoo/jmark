@@ -269,7 +269,7 @@
   }
   .demo-caption,
   .demo-note {
-    color: #65748b;
+    color: #5f6c80;
     font-size: 13px;
     line-height: 1.7;
   }
@@ -298,7 +298,7 @@
   }
   small {
     font: 12px var(--font-code);
-    color: #65748b;
+    color: #5f6c80;
   }
   .time-track {
     display: grid;
@@ -347,7 +347,7 @@
     display: flex;
     justify-content: space-between;
     gap: 12px;
-    color: #65748b;
+    color: #5f6c80;
     font-size: 12px;
     margin: 16px 0;
   }
@@ -362,7 +362,7 @@
     align-items: center;
     min-height: 42px;
     background: #edf0f4;
-    color: #7b8797;
+    color: #5f6c80;
     border: 1px solid #dce3ee;
     border-radius: 4px;
     transition:

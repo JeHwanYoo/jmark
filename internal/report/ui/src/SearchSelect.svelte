@@ -217,7 +217,7 @@
   }
   .control:focus-within {
     border-color: #2563eb;
-    box-shadow: 0 0 0 3px #2563eb18;
+    box-shadow: 0 0 0 1px #2563eb;
   }
   input {
     width: 100%;
@@ -234,7 +234,7 @@
     text-overflow: ellipsis;
   }
   input::placeholder {
-    color: #7a8596;
+    color: #5f6c80;
   }
   .toggle {
     display: grid;

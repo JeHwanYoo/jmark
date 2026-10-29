@@ -4,10 +4,14 @@
   import { BarChart, ScatterChart } from "echarts/charts";
   import { GridComponent, TooltipComponent } from "echarts/components";
   import { SVGRenderer } from "echarts/renderers";
-  import { chartOption, chartData } from "./model.js";
+  import { chartOption, chartData, dimensions } from "./model.js";
   use([BarChart, ScatterChart, GridComponent, TooltipComponent, SVGRenderer]);
   let { rows, scale, axis, series, domain, bounds = undefined, print = false } = $props();
   const layout = $derived(chartData(rows, axis, series));
+  const dimension = (value) => dimensions.find((d) => d.value === value)?.label;
+  const description = $derived(
+    `${rows[0]?.label ?? "Benchmark"} in ${rows[0]?.unit ?? "units"} by ${dimension(axis)} and ${dimension(series)}, ${scale} scale. Exact values are in the results table.`,
+  );
   const height = $derived(
     Math.min(print ? 600 : Infinity, Math.max(
       280,
@@ -44,5 +48,5 @@
   bind:this={element}
   style:height={`${height}px`}
   role="img"
-  aria-label="Benchmark comparison chart"
+  aria-label={description}
 ></div>

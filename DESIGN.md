@@ -57,7 +57,7 @@ font assets.
 | Page background | `#f5f7fa` |
 | Surface | `#ffffff` |
 | Primary text | `#172033` |
-| Secondary text | `#65748b` |
+| Secondary text | `#5f6c80` |
 | Border | `#e0e6ee` |
 | Accent / focus | `#2563eb` |
 | Series palette | `#2563eb`, `#0d9488`, `#d97706`, `#9333ea`, `#db2777`, `#475569` |
@@ -97,6 +97,15 @@ Charts resize with their container. Reduce or hide overlapping ticks on narrow
 screens. Retain readable category labels and full values in the table. Provide
 visible keyboard focus, semantic headings, labeled controls, and a text table
 alongside the chart. Never communicate selection or meaning through color alone.
+Text meets 4.5:1 contrast against its background, including the page background;
+focus indicators meet 3:1. The chart's accessible name states the metric, unit,
+axes, and scale. Table headers declare their scope.
+
+## Search and sharing
+
+Each page carries a description derived from its results and Open Graph tags.
+The public site build receives the Pages base URL, which adds canonical links,
+`sitemap.xml`, and `robots.txt`. Local reports omit canonical URLs.
 
 ## UI copy
 

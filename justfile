@@ -45,5 +45,5 @@ private *args:
     @{{jmark}} private {{args}}
 
 # Build the public index and reports for GitHub Pages.
-site:
-    @{{jmark}} site
+site *args:
+    @{{jmark}} site {{args}}

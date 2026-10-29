@@ -20,6 +20,6 @@
     font-size: 12px;
   }
   .workload-metadata > div { display: flex; gap: 8px; align-items: baseline; }
-  dt { color: #65748b; }
+  dt { color: #5f6c80; }
   dd { margin: 0; color: #172033; overflow-wrap: anywhere; font-family: var(--font-code); }
 </style>

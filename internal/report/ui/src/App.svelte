@@ -239,9 +239,9 @@
           <table>
             <thead
               ><tr
-                >{#if runs.length}<th>Run</th>{/if}<th>Runtime</th><th
+                >{#if runs.length}<th scope="col">Run</th>{/if}<th scope="col">Runtime</th><th scope="col"
                   >Approach</th
-                ><th class="number">{unit(filtered[0])}</th><th>Status</th><th
+                ><th scope="col" class="number">{unit(filtered[0])}</th><th scope="col">Status</th><th scope="col"
                   class="number">Iterations</th
                 ></tr
               ></thead

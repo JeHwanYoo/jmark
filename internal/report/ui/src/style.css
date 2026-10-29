@@ -41,7 +41,7 @@ main {
   text-transform: uppercase;
   letter-spacing: 0.1em;
   font-size: 11px;
-  color: #65748b;
+  color: #5f6c80;
   font-weight: 650;
   margin: 0 0 10px;
 }
@@ -87,7 +87,7 @@ button {
 }
 button:focus-visible,
 summary:focus-visible {
-  outline: 3px solid #93b4fc;
+  outline: 3px solid #2563eb;
   outline-offset: 3px;
 }
 button:disabled {
@@ -152,7 +152,7 @@ button:disabled {
 }
 .panel-heading span {
   font: 11px var(--font-code);
-  color: #7a8596;
+  color: #5f6c80;
 }
 h2 {
   font-size: 14px;
@@ -184,7 +184,7 @@ td {
 th {
   font-size: 11px;
   font-weight: 550;
-  color: #6d7a8c;
+  color: #5f6c80;
   background: #fafbfc;
 }
 .number {
@@ -204,7 +204,7 @@ summary {
 }
 .env-row {
   padding: 16px 24px;
-  color: #65748b;
+  color: #5f6c80;
   overflow-wrap: anywhere;
 }
 .env-row p {
@@ -215,7 +215,7 @@ summary {
 }
 .empty {
   padding: 50px 0;
-  color: #66758c;
+  color: #5f6c80;
 }
 @media (max-width: 600px) {
   header {
@@ -261,7 +261,7 @@ summary {
 }
 .axis-unit {
   font: 12px var(--font-code);
-  color: #65748b;
+  color: #5f6c80;
   margin-left: auto;
   padding-bottom: 12px;
 }

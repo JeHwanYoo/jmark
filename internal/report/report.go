@@ -26,6 +26,8 @@ type CompareRun struct {
 type Options struct {
 	IndexHref string
 	Sources   string
+	// URL is the page's absolute public address. Local reports leave it empty.
+	URL string
 }
 
 func RenderReport(ndjson []byte) (string, error) {
@@ -37,7 +39,7 @@ func RenderReportWithOptions(ndjson []byte, options Options) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fillPageData(project, string(joinArray(rows)), "jmark-data", options), nil
+	return fillPageData(project, describe(project, rows), string(joinArray(rows)), "jmark-data", options), nil
 }
 
 // RenderCompare builds the multi-run HTML page.
@@ -76,7 +78,43 @@ func RenderCompare(runs []CompareRun) (string, error) {
 	if len(all) == 0 {
 		return "", fmt.Errorf("no results")
 	}
-	return fillPageData(project, string(joinArray(all)), "jmark-data", Options{Sources: sources.String()}), nil
+	return fillPageData(project, describe(project, all), string(joinArray(all)), "jmark-data", Options{Sources: sources.String()}), nil
+}
+
+// describe summarizes rows for search results and link previews, in first-seen order.
+func describe(project string, rows [][]byte) string {
+	var names, runtimes, metrics []string
+	seen := map[string]bool{}
+	add := func(list *[]string, kind, value string) {
+		if value != "" && !seen[kind+value] {
+			seen[kind+value] = true
+			*list = append(*list, value)
+		}
+	}
+	for _, raw := range rows {
+		var row struct {
+			Name    string `json:"name"`
+			Runtime string `json:"runtime"`
+			Label   string `json:"label"`
+		}
+		if json.Unmarshal(raw, &row) != nil {
+			continue
+		}
+		add(&names, "name", row.Name)
+		add(&runtimes, "runtime", row.Runtime)
+		add(&metrics, "metric", row.Label)
+	}
+	text := project + " benchmark"
+	if len(names) > 0 {
+		text += " comparing " + strings.Join(names, ", ")
+	}
+	if len(runtimes) > 0 {
+		text += " on " + strings.Join(runtimes, ", ")
+	}
+	if len(metrics) > 0 {
+		text += ". Metrics: " + strings.Join(metrics, ", ")
+	}
+	return text + "."
 }
 
 // BrowserOpen opens path with /usr/bin/open, then open, then xdg-open.

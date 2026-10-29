@@ -20,7 +20,7 @@
 <main>
   <div class="heading">
     <h1>Results</h1>
-    <span class="count"
+    <span class="count" aria-live="polite"
       >{filtered.length} {filtered.length === 1 ? "run" : "runs"}</span
     >
   </div>
@@ -37,7 +37,7 @@
         <table>
           <thead
             ><tr
-              ><th>Project</th><th>Run</th><th>Runtimes</th><th>Captured</th
+              ><th scope="col">Project</th><th scope="col">Run</th><th scope="col">Runtimes</th><th scope="col">Captured</th
               ></tr
             ></thead
           >

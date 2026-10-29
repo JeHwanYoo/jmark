@@ -64,10 +64,13 @@ func (a *app) cmdVisibility(target string, args []string) error {
 }
 
 func (a *app) cmdSite(args []string) error {
-	if len(args) != 0 {
-		return fmt.Errorf("usage: site")
+	baseURL := ""
+	if len(args) == 2 && args[0] == "--base-url" {
+		baseURL = args[1]
+	} else if len(args) != 0 {
+		return fmt.Errorf("usage: site [--base-url <url>]")
 	}
-	path, err := artifact.BuildSite(a.root)
+	path, err := artifact.BuildSite(a.root, baseURL)
 	if err != nil {
 		return err
 	}

@@ -87,15 +87,27 @@ func TestPublicSiteContainsOnlyPublicSnapshots(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	index, err := BuildSite(root)
+	index, err := BuildSite(root, "https://example.test/jmark")
 	if err != nil {
 		t.Fatal(err)
 	}
 	site := filepath.Dir(filepath.Join(root, index))
-	pagePath := filepath.Join(site, strings.TrimPrefix(public, "public/"), "report.html")
+	href := strings.TrimPrefix(public, "public/") + "/report.html"
+	pagePath := filepath.Join(site, href)
 	page, err := os.ReadFile(pagePath)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if !strings.Contains(string(page), `<link rel="canonical" href="https://example.test/jmark/`+href+`">`) {
+		t.Fatal("missing canonical link")
+	}
+	sitemap, err := os.ReadFile(filepath.Join(site, "sitemap.xml"))
+	if err != nil || !strings.Contains(string(sitemap), "<loc>https://example.test/jmark/</loc>") || !strings.Contains(string(sitemap), "<loc>https://example.test/jmark/"+href+"</loc>") {
+		t.Fatalf("sitemap: %v %s", err, sitemap)
+	}
+	robots, err := os.ReadFile(filepath.Join(site, "robots.txt"))
+	if err != nil || !strings.Contains(string(robots), "Sitemap: https://example.test/jmark/sitemap.xml") {
+		t.Fatalf("robots: %v %s", err, robots)
 	}
 	if !strings.Contains(string(page), `data-index-href="../../index.html"`) || !strings.Contains(string(page), "measured-source") {
 		t.Fatal("missing index navigation or snapshot")
@@ -132,11 +144,14 @@ func TestPublicSiteContainsOnlyPublicSnapshots(t *testing.T) {
 	if _, err := Move(root, public, "private"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := BuildSite(root); err != nil {
+	if _, err := BuildSite(root, ""); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(pagePath); !os.IsNotExist(err) {
 		t.Fatal("stale public report remains")
+	}
+	if _, err := os.Stat(filepath.Join(site, "sitemap.xml")); !os.IsNotExist(err) {
+		t.Fatal("sitemap written without a base URL")
 	}
 	if _, err := os.Stat(filepath.Join(site, ".nojekyll")); err != nil {
 		t.Fatal(err)

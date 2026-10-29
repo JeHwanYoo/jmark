@@ -13,7 +13,7 @@ import (
 	"github.com/JeHwanYoo/jmark/internal/catalog"
 )
 
-const usage = "usage: doctor | list | runtimes [lock|install [<runtime>...]] | create <id> <runtime>... | bench [<id>] [--runtime <runtime>] [--format stream|ndjson|html] | open [<id>] | delete [<id>] | public [<project>/<run>] | private [<project>/<run>] | site"
+const usage = "usage: doctor | list | runtimes [lock|install [<runtime>...]] | create <id> <runtime>... | bench [<id>] [--runtime <runtime>] [--format stream|ndjson|html] | open [<id>] | delete [<id>] | public [<project>/<run>] | private [<project>/<run>] | site [--base-url <url>]"
 
 type app struct {
 	root   string

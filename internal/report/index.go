@@ -1,6 +1,9 @@
 package report
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"strings"
+)
 
 type IndexRun struct {
 	Project    string   `json:"project"`
@@ -10,7 +13,7 @@ type IndexRun struct {
 	Href       string   `json:"href"`
 }
 
-func RenderIndex(runs []IndexRun) (string, error) {
+func RenderIndex(runs []IndexRun, url string) (string, error) {
 	if runs == nil {
 		runs = []IndexRun{}
 	}
@@ -18,5 +21,17 @@ func RenderIndex(runs []IndexRun) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fillPageData("Results", string(data), "jmark-index-data", Options{}), nil
+	projects := []string{}
+	seen := map[string]bool{}
+	for _, run := range runs {
+		if !seen[run.Project] {
+			seen[run.Project] = true
+			projects = append(projects, run.Project)
+		}
+	}
+	description := "Benchmark results measured with jmark under explicit, comparable conditions."
+	if len(projects) > 0 {
+		description = "Benchmark results measured with jmark: " + strings.Join(projects, ", ") + "."
+	}
+	return fillPageData("Results", description, string(data), "jmark-index-data", Options{URL: url}), nil
 }
