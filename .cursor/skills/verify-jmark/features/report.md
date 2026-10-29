@@ -36,10 +36,16 @@ and outside dismissal in SearchSelect. Follow the root DESIGN.md standards.
 
 ## Export checks
 
-Open Export beside the heading. Toggle Format, Chart, Environment and Source code and
-confirm the preview follows. Print to PDF and require A4 pages with no clipped chart,
-split table rows, or horizontally cut code. Download Markdown and confirm the same
-sections and table values.
+Open Export beside the heading. Require every metric checked by default; uncheck
+some metrics and approaches and toggle Environment and Source code; confirm the
+preview follows and each metric's chart keeps one shared axis. Unchecking every
+metric disables Print and Download. Require Wall time first in the Metric picker
+and the export list; drag a metric by its handle and move another with ArrowUp/
+ArrowDown, confirm the preview and printed pages follow the new order, and Reset
+order restores the default. Print to PDF and require each metric to start
+on its own A4 page, the appendix on the page after the last metric, and no clipped
+chart, split table rows, or horizontally cut code. Download HTML, open it offline, and confirm it
+matches the preview.
 
 ## Metric guide checks
 

@@ -438,9 +438,11 @@ a:focus-visible {
   width: 186mm;
   background: white;
 }
+/* No top/bottom page margin leaves browsers no room for their URL and page-number
+   header/footer; the document repeats its own vertical padding on every page. */
 @page {
   size: A4 portrait;
-  margin: 12mm;
+  margin: 0 12mm;
 }
 @media print {
   :root {
@@ -452,6 +454,9 @@ a:focus-visible {
   .print-document {
     position: static;
     width: auto;
+    padding: 12mm 0;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
   }

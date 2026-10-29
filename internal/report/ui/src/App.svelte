@@ -7,6 +7,7 @@
   import Chart from "./Chart.svelte";
   import SearchSelect from "./SearchSelect.svelte";
   import ExportDialog from "./ExportDialog.svelte";
+  import { metricSections } from "./export-model.js";
   import {
     colors,
     chartData,
@@ -39,8 +40,11 @@
   let scale = $state("linear");
   let sort = $state("value");
   const condition = $derived(selected || choices[0]?.key);
+  const selection = $derived(
+    selectRows(rows, condition, selectedRuntime, run),
+  );
   const filtered = $derived(
-    selectRows(rows, condition, selectedRuntime, run)
+    selection
       .filter((r) => metricKey(r) === metric)
       .map(displayRow),
   );
@@ -73,18 +77,9 @@
       chartRows.every((r) => r.value > 0),
   );
   const activeScale = $derived(canLog ? scale : "linear");
-  const printBounds = $derived.by(() => {
-    const values = chartRows.map((row) => row.value);
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    return min === max ? undefined : {
-      min: activeScale === "log" ? min : Math.min(0, min),
-      max: activeScale === "log" ? max : Math.max(0, max),
-    };
-  });
   const environments = $derived([
     ...new Map(
-      filtered.map((r) => [
+      selection.map((r) => [
         JSON.stringify([
           r.run,
           r.runtime,
@@ -101,19 +96,14 @@
   const report = $derived({
     title,
     workload: choices.find((choice) => choice.key === condition)?.label ?? "",
-    metric: `${metricChoices.find((choice) => choice.key === metric)?.label ?? ""} · ${unit(filtered[0])}`,
-    rows: ordered,
-    chartRows,
+    metrics: metricSections(selection, metricChoices, sort, scale),
     environments,
     sources,
     chart: {
-      scale: activeScale,
       axis,
       series: activeSeries,
       domain,
-      legend,
-      bounds: printBounds,
-      summary: `${activeScale === "log" ? "Log" : "Linear"} scale · Y axis: ${dimensions.find((d) => d.value === axis)?.label} · Series: ${dimensions.find((d) => d.value === activeSeries)?.label}`,
+      summary: `Y axis: ${dimensions.find((d) => d.value === axis)?.label} · Series: ${dimensions.find((d) => d.value === activeSeries)?.label}`,
     },
   });
 </script>

@@ -16,7 +16,17 @@ export function displayRow(row) {
  return {...row,value:row.value*factor,unit:label};
 }
 export const metricKey = r => JSON.stringify([r.metric,r.unit,r.method,r.scope]);
-export const metrics = rows => [...new Map(rows.map(r=>[metricKey(r),{key:metricKey(r),label:r.label || r.metric}])).values()];
+// Elapsed time and its reciprocal first, then CPU time and its split, memory,
+// and hardware counters with their derived ratios. Unknown metrics follow.
+export const metricOrder = [
+  "wall_time", "throughput", "cpu_time", "user_time", "system_time", "peak_rss",
+  "instructions", "cpu_cycles", "ipc", "cache_references", "cache_misses",
+  "cache_miss_rate", "branch_misses",
+];
+const metricRank = (id) =>
+  metricOrder.includes(id) ? metricOrder.indexOf(id) : metricOrder.length;
+export const metrics = rows => [...new Map(rows.map(r=>[metricKey(r),{key:metricKey(r),id:r.metric,label:r.label || r.metric}])).values()]
+  .sort((a, b) => metricRank(a.id) - metricRank(b.id));
 export function parameters(row) {
   const values = row?.parameters ?? (row?.n != null ? { n: row.n } : {});
   return Object.entries(values).sort(([a], [b]) => a.localeCompare(b));

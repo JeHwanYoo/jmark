@@ -147,12 +147,27 @@ historical code. Raw Markdown HTML and remote images are disabled.
 
 One Export button beside the project heading is the only output entry point; do
 not add print or download buttons to individual sections. It opens a modal with
-Format (PDF / Print or Markdown), Chart, Environment and Source code selectors and a
-live A4 preview. Results are always included. Exports follow the active filters,
-metric, scale, axis and series. PDF output is a compact A4 portrait report: charts
-split by category so each part fits a page, table rows and environment entries never
-break across pages, and source code wraps instead of scrolling. Markdown output
-omits the chart.
+a PDF/HTML format toggle, a reorderable metric list with one checkbox per metric
+(all checked by default), one
+checkbox per approach for the charts, Appendix checkboxes for Environment and Source
+code (both checked by default), and a
+live A4 preview that shows one sheet per page group. Export needs at least one metric.
+Metrics follow one fixed order everywhere: wall time, throughput, CPU, user and
+system time, peak RSS, then hardware counters with their ratios, and unknown metrics
+last. In the export list, rows reorder by dragging the grip handle or by focusing it
+and pressing ArrowUp/ArrowDown; a Reset order link appears once the order differs
+from the default, and the exported pages follow the list order.
+Each included metric gets its own chart and results table; with every approach
+unchecked the charts are omitted. Exports follow the active workload, runtime, run,
+scale, sort, axis and series; log scale falls back to linear for a metric with
+non-positive values. PDF output is a compact A4 portrait report: every metric starts
+on a new page, Environment and Source code start together on the page after the last
+metric, charts split by category so each part fits a page, table rows and environment
+entries never break across pages, and source code wraps instead of scrolling. Pages use zero top and bottom `@page`
+margins so browsers print no URL or page-number header/footer; the document repeats
+its own 12mm vertical padding on each page.
+HTML output is a single offline file containing the previewed document, with the
+report's styles and fonts embedded and no scripts.
 
 ## Metric presentation
 

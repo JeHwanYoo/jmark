@@ -1,6 +1,7 @@
 # jmark
 
 Run the same micro-benchmark across runtimes and compare time, memory, throughput, and optional hardware counters.
+It began as a personal tool to satisfy my own curiosity about how code performs.
 
 ## Requirements
 
@@ -28,9 +29,7 @@ just open                # pick past runs → compare charts in the browser
 just bench <id> [--runtime <runtime>] [--format stream|ndjson|html]
 ```
 
-Pass an ID in scripts; omit it in a terminal to pick the project, runtime, and format. Supplied options skip their pickers. By default, jmark measures all available runtimes supported by the project. `--runtime` selects one for measurement; mise still installs all configured tools. Results stream to stdout as JSON lines. Progress and skipped runtimes go to stderr, so `just bench <id> | jq` works.
-
-`ndjson` and `html` save to `artifacts/private/<id>/<timestamp>/` and print the path. The default `stream` format saves nothing and does not appear in `just open`.
+Without an ID, a terminal picker asks for whatever options you left out. jmark measures every available runtime of the project unless `--runtime` picks one. The default `stream` format prints JSON lines to stdout and saves nothing; progress goes to stderr, so `just bench <id> | jq` works. `ndjson` and `html` save to `artifacts/private/<id>/<timestamp>/`, print the path, and show up in `just open`.
 
 ```bash
 just open [<id>]         # Tab to multi-select; Enter = compare, Ctrl-X = delete
@@ -47,32 +46,19 @@ just bench sum-large-doubles --metrics wall_time,peak_rss
 just bench sum-large-doubles --metrics instructions,cpu_cycles,ipc
 ```
 
-CLI selection replaces project selection; project selection replaces defaults.
-Additional IDs: `user_time`, `system_time`, `cache_references`, `cache_misses`,
-`branch_misses`, and `cache_miss_rate`. Each metric is computed from hyperfine
-readings, and a metric is available when all of its readings are: macOS reports
-no cache or branch counters, and Windows reports no memory or hardware counters.
-`just doctor` lists what the current host collects. `bench` warns before running
-metrics the OS cannot report, and missing metrics remain visible with an
-unavailable reason (`unsupported_on_platform` or `not_reported_by_collector`).
+`--metrics` overrides `bench.toml`, which overrides the defaults. Other IDs are
+`user_time`, `system_time`, `cache_references`, `cache_misses`, `branch_misses`,
+and `cache_miss_rate`. macOS has no cache or branch counters, and Windows has no
+memory or hardware counters; `just doctor` shows what this host collects. A metric
+that cannot be measured stays in the result with a reason.
 
-Reports have separate Workload and Metric selectors. The (?) next to Metric opens
-a guide in a separate tab with definitions and animated examples. It lists the
-metrics in the report first, then the rest with their status on the report's
-host: available but not requested, unsupported on the OS, or not reported. The guide works offline and reads its text from `METRICS.md`. Peak RSS includes runtime
-startup and input generation; it is the median of process peak measurements,
-never bytes allocated per operation. One operation processes the entire input.
-See [METRICS.md](METRICS.md) for definitions, extension contracts and research.
-Results require schema version 2; previous saved formats are unsupported.
-
-In a report's Charts section, **Print / Save PDF** opens the browser print dialog
-for the currently filtered chart. Choose Save as PDF; the print layout uses A4
-portrait pages and splits large charts across pages with a shared axis scale.
-Browser print settings can override paper size and margins.
+In a report, the (?) beside Metric opens a guide to each metric, and Export saves
+the report as A4 PDF or standalone HTML. [METRICS.md](METRICS.md) has the full
+definitions.
 
 ## Publish results
 
-Private runs are Git-ignored; public runs in `artifacts/public/<project>/<run>/` can be committed. The picker shows both.
+Private runs are Git-ignored. Public runs live in `artifacts/public/<project>/<run>/` and can be committed.
 
 ```bash
 just public                       # choose private runs to make public
@@ -81,11 +67,9 @@ just private <project>/<run>       # move it back to private
 just site                         # build .jmark/site/index.html
 ```
 
-These commands move run directories intact and leave Git operations to you. Commit public additions and deletions with `git add -A artifacts/public`. Moving a run to private preserves its Git history.
+These commands only move directories; stage the result with `git add -A artifacts/public`. On each push to the default branch, the Pages workflow publishes public runs (set Settings → Pages → Source to GitHub Actions).
 
-The Pages workflow publishes public results on pushes to the default branch. In GitHub Settings → Pages → Build and deployment, select GitHub Actions. `just site` builds locally without running benchmarks or needing their runtimes.
-
-Saved runs include `sources.md` with inputs, approaches, runners, selected probes, and execution configuration. Reports display this snapshot and offer it as a Markdown download. Source changes during measurement abort the run. Older runs without snapshots leave sources unavailable.
+Each saved run keeps a `sources.md` snapshot of the code and configuration it measured, and the report shows it. Editing sources mid-run aborts the run.
 
 ## Add a benchmark
 
@@ -94,11 +78,11 @@ just runtimes                       # registered runtimes and current PATH avail
 just create <id> <runtime>...       # scaffolds benches/<id>/
 ```
 
-Write a strategy of ≤200 characters in `benches/<id>/AGENTS.md` (see the root `AGENTS.md`). Set sizes in `bench.toml`. In each family folder, add one pure-logic file per approach, with no clocks or JSON.
+Write a strategy of up to 200 characters in `benches/<id>/AGENTS.md` (rules in the root `AGENTS.md`), set sizes in `bench.toml`, and add one pure-logic file per approach in each family folder.
 
 ## Add a runtime
 
-Add `runtimes/<runtime>.toml`. Version capture runs the first `needs` command with `--version`; set `version` to override it. New families also need a runner and template in `families/<family>/`. Add the tool version to `mise.toml` and refresh `mise.lock` before benchmarking.
+Add `runtimes/<runtime>.toml` and the tool version in `mise.toml`, then run `just runtimes lock`. A new family also needs a runner and template in `families/<family>/`.
 
 ## Runtime versions
 
@@ -110,16 +94,14 @@ just runtimes lock node py       # refresh Node and Python entries
 just runtimes install            # install locked runtimes in the project cache
 ```
 
-Commit `mise.toml` and `mise.lock` together. To change versions, edit `mise.toml` and run `just runtimes lock`. Runtime ID `py` maps to mise's `python`.
+Commit `mise.toml` and `mise.lock` together. Runtime ID `py` maps to mise's `python`.
 
-`just bench` and `just runtimes lock|install` use mise from `PATH`, without shell activation. Each bench invocation installs locked runtimes in a fresh temporary directory before measurement, runs through `mise exec --locked`, then removes the directory on exit. Downloads stay cached in `.jmark/`.
-
-`just runtimes` checks `PATH` without installing tools. `just runtimes install` keeps an installation in `.jmark/mise-data/` without changing your shell PATH. Python and Node source compilation are disabled; installation fails if the platform has no locked download. Manage third-party application dependencies separately.
+Each bench run installs the locked runtimes into a temporary directory, runs through `mise exec --locked`, and removes the directory afterwards; downloads stay cached in `.jmark/`. Shell activation is not needed and your PATH is untouched. Python and Node are never compiled from source, so a platform without a locked download fails to install.
 
 ## Development
 
 [ARCHITECTURE.md](ARCHITECTURE.md) describes the structure and data flow; [DESIGN.md](DESIGN.md) covers report UI standards.
 
-Reports use Svelte and ECharts. After editing `internal/report/ui/src/` or `METRICS.md`, run `just ui-build` with Node.js and npm. Commit the lockfile and generated `internal/report/ui/dist/` assets; host tests verify their manifest against sources and assets. The report favicon is embedded from `internal/report/ui/src/assets/favicon.ico`; its matching vector source is `icon.svg`. `bench` and `open` use the embedded UI without rebuilding it. Reports are standalone HTML and need no server or network.
+Reports are standalone Svelte and ECharts pages. After editing `internal/report/ui/src/` or `METRICS.md`, run `just ui-build` and commit the generated `internal/report/ui/dist/`; host tests check it against the sources.
 
-`go test ./...` runs host and report fixture tests. `go test -tags live ./internal/measure` uses installed timer and runtime tools. Use `go test -race ./...` to check concurrent execution. `just doctor` checks tools, registry, project layouts, and probes.
+`go test ./...` runs host and report tests, `go test -tags live ./internal/measure` uses the installed tools, and `go test -race ./...` checks concurrency.

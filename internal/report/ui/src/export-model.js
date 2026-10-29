@@ -1,13 +1,41 @@
-import { chartData, format, unit } from "./model.js";
+import { chartData, displayRow, metricKey, orderRows, unit } from "./model.js";
 
-export const exportFormats = [
-  { value: "pdf", label: "PDF / Print" },
-  { value: "markdown", label: "Markdown" },
-];
-export const inclusion = [
-  { value: "include", label: "Include" },
-  { value: "omit", label: "Omit" },
-];
+// One printed section per metric, filtered and ordered like the on-screen chart.
+export function metricSections(rows, choices, sort, scale) {
+  return choices.map((choice) => {
+    const matching = rows.filter((row) => metricKey(row) === choice.key);
+    const sectionRows = orderRows(matching.map(displayRow), sort);
+    const chartRows = sectionRows.filter(
+      (row) => row.status === "ok" && Number.isFinite(row.value),
+    );
+    // Convert the unit even when the metric has no measured value.
+    const label = unit(displayRow({ ...matching[0], value: 0 }));
+    return {
+      key: choice.key,
+      label: choice.label,
+      title: `${choice.label} · ${label}`,
+      unit: label,
+      rows: sectionRows,
+      chartRows,
+      scale:
+        chartRows.length && chartRows.every((row) => row.value > 0)
+          ? scale
+          : "linear",
+    };
+  });
+}
+
+// One shared value axis across every printed chart page.
+export function chartBounds(rows, scale) {
+  const values = rows.map((row) => row.value);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  if (!values.length || min === max) return undefined;
+  return {
+    min: scale === "log" ? min : Math.min(0, min),
+    max: scale === "log" ? max : Math.max(0, max),
+  };
+}
 
 // Split chart rows by category so each printed chart fits on one A4 page.
 export function chartPages(rows, axis, series, budget = 520) {
@@ -27,6 +55,18 @@ export function chartPages(rows, axis, series, budget = 520) {
   return pages;
 }
 
+// Saved keys keep their order; keys not yet ordered follow in default order.
+export const orderedKeys = (keys, order) => [
+  ...order.filter((key) => keys.includes(key)),
+  ...keys.filter((key) => !order.includes(key)),
+];
+
+export function moveKey(keys, key, index) {
+  const rest = keys.filter((other) => other !== key);
+  rest.splice(Math.max(0, Math.min(index, rest.length)), 0, key);
+  return rest;
+}
+
 export const statusText = (row) =>
   row.status === "ok" ? "Measured" : (row.reason ?? row.status ?? "—");
 
@@ -41,66 +81,30 @@ export function environment(row) {
   };
 }
 
-const cell = (value) =>
-  String(value ?? "—")
-    .replace(/\\/g, "\\\\")
-    .replace(/\|/g, "\\|")
-    .replace(/\s+/g, " ");
+export const exportFormats = [
+  { value: "pdf", label: "PDF" },
+  { value: "html", label: "HTML" },
+];
 
-export function reportMarkdown(report, include) {
-  const showRun = report.rows.some((r) => r.run);
-  const header = [
-    ...(showRun ? ["Run"] : []),
-    "Runtime",
-    "Approach",
-    unit(report.rows[0]),
-    "Status",
-    "Iterations",
-  ];
-  const align = header.map((_, i) =>
-    i === header.length - 3 || i === header.length - 1 ? "--:" : "---",
+export const exportFilename = (title, extension) =>
+  `${String(title || "report").replace(/[^\w.-]+/g, "-")}.${extension}`;
+
+const escapeHtml = (text) =>
+  String(text).replace(
+    /[&<>"]/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
   );
-  const lines = [
-    `# ${report.title}`,
-    "",
-    report.workload,
-    "",
-    report.metric,
-    "",
-    "## Results",
-    "",
-    `| ${header.map(cell).join(" | ")} |`,
-    `| ${align.join(" | ")} |`,
-    ...report.rows.map(
-      (r) =>
-        `| ${[
-          ...(showRun ? [r.run] : []),
-          r.runtime,
-          r.name,
-          format(r.value),
-          statusText(r),
-          format(r.iters_meta),
-        ]
-          .map(cell)
-          .join(" | ")} |`,
-    ),
-    "",
-  ];
-  if (include.environment) {
-    lines.push("## Environment", "");
-    for (const row of report.environments) {
-      const env = environment(row);
-      lines.push(
-        `- **${cell(env.title)}** — ${[env.version, env.host, env.settings].filter(Boolean).map(cell).join(" · ")}`,
-      );
-    }
-    lines.push("");
-  }
-  if (include.sources && report.sources) {
-    lines.push("## Source code", "", report.sources.trimEnd(), "");
-  }
-  return lines.join("\n");
-}
 
-export const markdownFilename = (title) =>
-  `${String(title || "report").replace(/[^\w.-]+/g, "-")}.md`;
+// The exported page reuses the report's own styles so it matches the preview,
+// and keeps an A4 viewport so phones zoom out instead of reflowing the page.
+export function standaloneHtml(title, styles, body) {
+  return `<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=840"><title>${escapeHtml(title)}</title>
+<style>${styles.join("\n").replace(/<\/style/gi, "<\\/style")}</style>
+<style>body{padding:16px 0}.export-paper{width:210mm;margin:0 auto}.export-paper .doc-page{min-height:297mm;margin-bottom:16px;padding:12mm;background:#fff;box-shadow:0 1px 4px #17203326}@page{size:A4 portrait;margin:0 12mm}@media print{:root{background:#fff}body{padding:0}.export-paper{width:auto}.export-paper .doc-page{min-height:0;margin:0;padding:12mm 0;box-shadow:none;box-decoration-break:clone;-webkit-box-decoration-break:clone}}</style>
+</head>
+<body>${body}</body>
+</html>
+`;
+}
