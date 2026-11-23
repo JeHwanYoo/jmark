@@ -10,11 +10,12 @@ import (
 // values outside the registry format.
 
 var (
-	reSkip   = regexp.MustCompile(`^[ \t]*(#.*)?$`)
-	reAssign = regexp.MustCompile(`^[ \t]*([a-z_]+)[ \t]*=[ \t]*(.*)$`)
-	reString = regexp.MustCompile(`^"([^"]*)"[ \t]*(#.*)?$`)
-	reInt    = regexp.MustCompile(`^([0-9]+)[ \t]*(#.*)?$`)
-	reCanon  = regexp.MustCompile(`^(0|[1-9][0-9]*)$`)
+	reSkip    = regexp.MustCompile(`^[ \t]*(#.*)?$`)
+	reAssign  = regexp.MustCompile(`^[ \t]*([a-z_]+)[ \t]*=[ \t]*(.*)$`)
+	reString  = regexp.MustCompile(`^"([^"]*)"[ \t]*(#.*)?$`)
+	reLiteral = regexp.MustCompile(`^'([^']*)'[ \t]*(#.*)?$`)
+	reInt     = regexp.MustCompile(`^([0-9]+)[ \t]*(#.*)?$`)
+	reCanon   = regexp.MustCompile(`^(0|[1-9][0-9]*)$`)
 )
 
 type flatFile struct {
@@ -56,6 +57,8 @@ func parseFlat(path string) (flatFile, error) {
 		var val string
 		if sm := reString.FindStringSubmatch(raw); sm != nil {
 			val = sm[1]
+		} else if lm := reLiteral.FindStringSubmatch(raw); lm != nil {
+			val = lm[1]
 		} else if im := reInt.FindStringSubmatch(raw); im != nil {
 			val = im[1]
 		} else {

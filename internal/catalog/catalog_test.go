@@ -35,21 +35,21 @@ func TestRealRepoCatalog(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Join(projects, ",") != "sum-large-doubles" {
+	if strings.Join(projects, ",") != "http-request-batch,http-request-single,inconel-grid-dense,inconel-grid-sparse,sum-large-doubles" {
 		t.Fatalf("projects = %v", projects)
 	}
 	runtimes, err := c.ListRuntimes()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Join(runtimes, ",") != "bun,node,py" {
+	if strings.Join(runtimes, ",") != "bun,gpui,node,py,rust" {
 		t.Fatalf("runtimes = %v", runtimes)
 	}
 	fams, err := c.ListFamilies()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Join(fams, ",") != "js,py" {
+	if strings.Join(fams, ",") != "gpui,js,py,rs" {
 		t.Fatalf("families = %v", fams)
 	}
 	if err := c.CheckRegistry(); err != nil {
@@ -409,6 +409,49 @@ func repoRoot(t *testing.T) string {
 		t.Fatal("runtime.Caller failed")
 	}
 	return filepath.Clean(filepath.Join(filepath.Dir(file), "..", ".."))
+}
+
+func TestLiteralStringValue(t *testing.T) {
+	root := t.TempDir()
+	writeFiles(t, root, withBase(map[string]string{"runtimes/node.toml": "family = \"js\"\nneeds = \"node\"\nbuild = 'cd \"$(dirname {runner})\"' # literal\nrun = \"node {runner} {input} {approach} {n} {iters} {probe}\"\n"}))
+	c := catalog.New(root)
+	runtime, err := c.Runtime("node")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if runtime.Build != `cd "$(dirname {runner})"` {
+		t.Fatalf("build = %q", runtime.Build)
+	}
+}
+
+func TestRuntimeSources(t *testing.T) {
+	root := t.TempDir()
+	writeFiles(t, root, withBase(map[string]string{"families/js/manifest.json": "{}\n"}))
+	c := catalog.New(root)
+	path := filepath.Join(root, "runtimes", "node.toml")
+	body, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, append(body, []byte("sources = \"families/js/manifest.json\"\n")...), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.CheckRegistry(); err != nil {
+		t.Fatal(err)
+	}
+	plan, err := c.Plan("demo", "node")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(plan.Runtime.Sources) != 1 || plan.Runtime.Sources[0] != filepath.Join(root, "families/js/manifest.json") {
+		t.Fatalf("sources: %v", plan.Runtime.Sources)
+	}
+	if err := os.WriteFile(path, append(body, []byte("sources = \"../outside.json\"\n")...), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.CheckRegistry(); err == nil || !strings.Contains(err.Error(), "is not a repository file") {
+		t.Fatalf("outside source accepted: %v", err)
+	}
 }
 
 func TestPlanDefersExecutionPathsAndCapturesVersionCommand(t *testing.T) {

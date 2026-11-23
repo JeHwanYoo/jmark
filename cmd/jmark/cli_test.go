@@ -144,8 +144,8 @@ func TestBenchFlagsAndStubs(t *testing.T) {
 		{[]string{"bench"}, 1, "bench: id is required", ""},
 		{[]string{"bench", "Bad"}, 1, "invalid project id 'Bad'", ""},
 		{[]string{"bench", "missing-project"}, 1, "unknown project 'missing-project' (see: just list)", ""},
-		{[]string{"bench", "sum-large-doubles", "--runtime", "rust"}, 1, "unknown runtime 'rust'", ""},
-		{[]string{"bench", "sum-large-doubles", "--runtime=rust"}, 1, "unknown runtime 'rust'", ""},
+		{[]string{"bench", "sum-large-doubles", "--runtime", "zig"}, 1, "unknown runtime 'zig'", ""},
+		{[]string{"bench", "sum-large-doubles", "--runtime=zig"}, 1, "unknown runtime 'zig'", ""},
 		{[]string{"open", "--help"}, 0, "", "usage: open"},
 		{[]string{"open", "--help", "x"}, 0, "", "usage: open"},
 		{[]string{"open", "a", "b"}, 1, "usage: open [<id>]", ""},
@@ -186,7 +186,7 @@ func TestWhitespaceRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, errOut, code := runOut(t, dir, "list")
-	if code != 1 || !strings.Contains(errOut, "repo path must not contain whitespace") {
+	if code != 0 {
 		t.Fatalf("exit %d stderr %q", code, errOut)
 	}
 }

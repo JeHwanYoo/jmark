@@ -21,7 +21,7 @@ var (
 	idPat    = regexp.MustCompile(idPattern)
 	probePat = regexp.MustCompile(probePattern)
 
-	runtimeKeys = []string{"family", "needs", "build", "run", "version", "probes"}
+	runtimeKeys = []string{"family", "needs", "build", "run", "version", "probes", "sources"}
 	benchKeys   = []string{"n", "warmup", "iters", "runs", "probes", "metrics"}
 
 	placeholders = map[string]bool{
@@ -60,6 +60,8 @@ type Runtime struct {
 	Run     string
 	Version string
 	Probes  string
+	// Sources lists repo-relative files the build reads besides the runner and benchmark sources.
+	Sources string
 }
 
 func (c *Catalog) runtimePath(id string) string {
@@ -150,6 +152,7 @@ func (c *Catalog) Runtime(id string) (Runtime, error) {
 		Run:     f.get("run"),
 		Version: f.get("version"),
 		Probes:  f.get("probes"),
+		Sources: f.get("sources"),
 	}, nil
 }
 

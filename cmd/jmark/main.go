@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"unicode"
 
 	"github.com/JeHwanYoo/jmark/internal/catalog"
 )
@@ -48,10 +47,6 @@ func run(args []string, in *os.File, stdout, stderr io.Writer, root string) int 
 			return 1
 		}
 		root = found
-	}
-	if strings.IndexFunc(root, unicode.IsSpace) >= 0 {
-		fmt.Fprintf(stderr, "jmark: repo path must not contain whitespace: %s\n", root)
-		return 1
 	}
 	a := &app{
 		root:   root,

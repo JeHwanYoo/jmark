@@ -19,7 +19,7 @@ A **family** supplies an input factory, approach sources, a shared runner, templ
 and source validation rules. A **runtime** specifies how to build and execute a
 family's sources. Several runtimes can share a family without duplicating benchmark
 logic. Registry files determine runtime discovery, tool requirements, commands,
-version capture, and probe availability.
+version capture, probe availability, and extra build sources.
 
 The runner creates one input, calls the selected approach repeatedly, and accumulates
 its numeric return value into a sink. Approach sources contain the algorithm only.
@@ -169,9 +169,11 @@ are buffered until every selected runtime succeeds. A measurement or validation
 failure emits no Result lines and publishes no saved run. Progress and warnings go
 to stderr. A failure while writing stdout can still leave a partially written stream.
 
-Run and version commands use space-separated arguments without a shell. Build
-commands run through a shell. Repository paths containing whitespace are rejected;
-command templates do not provide general argument quoting for timed execution.
+Run and version commands are split into arguments without a shell; single quotes,
+double quotes, and backslashes group words as in a POSIX shell. Build commands
+run through a shell. Paths substituted into command templates are quoted when
+they contain whitespace or shell syntax, so the repository may live in such a path.
+Registry values may use TOML literal strings (`'...'`) to include double quotes.
 
 ## Measurement semantics
 
@@ -231,7 +233,7 @@ path components; moves fail when their destination already exists.
 
 Saved runs include a `sources.md` snapshot. Before measurement, the host reads the
 input factory, runner, approaches, selected probe hooks, workload configuration,
-and runtime configuration referenced by the plan. It checks captured files after
+runtime configuration, and the runtime's declared `sources` referenced by the plan. It checks captured files after
 each runtime completes and rejects changed contents. A shared file must have the
 same contents across runtime snapshots. This does not capture installed toolchains,
 external dependencies, or arbitrary transitive imports.

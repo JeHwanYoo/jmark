@@ -2,6 +2,8 @@ package measure
 
 import (
 	"os/exec"
+
+	"github.com/JeHwanYoo/jmark/internal/benchmark"
 	"strconv"
 	"strings"
 )
@@ -45,7 +47,7 @@ func RuntimeVersion(command string) (string, error) {
 	if command == "" {
 		return "", nil
 	}
-	args := splitSpaces(command)
+	args := benchmark.SplitArgs(command)
 	if len(args) == 0 {
 		return "", nil
 	}

@@ -32,6 +32,7 @@ type PlanRuntime struct {
 	Family     string   `json:"family"`
 	Needs      string   `json:"needs"`
 	Probes     []string `json:"probes"`
+	Sources    []string `json:"sources,omitempty"`
 }
 
 // PlanFamily is the family slice of a Plan.

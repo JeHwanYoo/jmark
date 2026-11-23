@@ -62,7 +62,7 @@ func (m *Measure) prepare(plan benchmark.Plan) (benchmark.Plan, func(), error) {
 	cleanup := func() { _ = os.RemoveAll(dir) }
 	// Copy before binding paths so callers can reuse a plan concurrently.
 	plan.Approaches = append([]benchmark.Approach(nil), plan.Approaches...)
-	bind := func(s string) string { return strings.ReplaceAll(s, "{build_dir}", dir) }
+	bind := func(s string) string { return strings.ReplaceAll(s, "{build_dir}", benchmark.QuoteArg(dir)) }
 	bindOptional := func(s *string) *string {
 		if s == nil {
 			return nil
@@ -71,7 +71,7 @@ func (m *Measure) prepare(plan benchmark.Plan) (benchmark.Plan, func(), error) {
 		return &value
 	}
 	for i, approach := range plan.Approaches {
-		approach.Bin = bind(approach.Bin)
+		approach.Bin = strings.ReplaceAll(approach.Bin, "{build_dir}", dir)
 		approach.BuildCmd = bindOptional(approach.BuildCmd)
 		approach.TimedCmd = bind(approach.TimedCmd)
 		approach.ProbeCmd = bindOptional(approach.ProbeCmd)

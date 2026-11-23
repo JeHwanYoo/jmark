@@ -17,6 +17,7 @@ func TestCaptureVerifyAndMarkdown(t *testing.T) {
 		"benches/demo/core/_input.src": "input",
 		"benches/demo/core/loop.src":   "code\n```\n<script>example</script>\n",
 		"families/core/runner.src":     "runner",
+		"families/core/manifest.toml":  "[dependencies]\n",
 	}
 	for path, body := range files {
 		full := filepath.Join(root, path)
@@ -28,9 +29,13 @@ func TestCaptureVerifyAndMarkdown(t *testing.T) {
 		}
 	}
 	plan := benchmark.Plan{Project: "demo", Runtime: benchmark.PlanRuntime{ID: "engine"}, Input: filepath.Join(root, "benches/demo/core/_input.src"), Family: benchmark.PlanFamily{Runner: filepath.Join(root, "families/core/runner.src")}, Approaches: []benchmark.Approach{{Name: "loop", Path: filepath.Join(root, "benches/demo/core/loop.src")}}}
+	plan.Runtime.Sources = []string{filepath.Join(root, "families/core/manifest.toml")}
 	snapshot, err := Capture(root, plan)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if string(snapshot["families/core/manifest.toml"]) != "[dependencies]\n" {
+		t.Fatal("runtime source missing from snapshot")
 	}
 	markdown := snapshot.Markdown()
 	if !strings.Contains(markdown, "````src\ncode\n```\n<script>example</script>\n````") {

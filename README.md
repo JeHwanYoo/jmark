@@ -82,7 +82,9 @@ Write a strategy of up to 200 characters in `benches/<id>/AGENTS.md` (rules in t
 
 ## Add a runtime
 
-Add `runtimes/<runtime>.toml` and the tool version in `mise.toml`, then run `just runtimes lock`. A new family also needs a runner and template in `families/<family>/`.
+Add `runtimes/<runtime>.toml` and the tool version in `mise.toml`, then run `just runtimes lock`. A new family also needs a runner and template in `families/<family>/`. List any other files the build reads, such as a dependency manifest, in the runtime's `sources` so saved runs capture them.
+
+The `rust` runtime uses the Rust toolchain on your `PATH` instead of mise. Its approaches share the dependencies in `families/rs/Cargo.toml` and `Cargo.lock`.
 
 ## Runtime versions
 

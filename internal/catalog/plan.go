@@ -143,6 +143,9 @@ func (c *Catalog) planFor(id, runtime, srcdir, input string, params benchmark.Pa
 		for i, p := range probes {
 			hooks[i] = p.Hook
 		}
+		for i, hook := range hooks {
+			hooks[i] = benchmark.QuoteArg(hook)
+		}
 		probeArg = "{probe_out} " + strings.Join(hooks, " ")
 	}
 	for _, name := range names {
@@ -171,6 +174,10 @@ func (c *Catalog) planFor(id, runtime, srcdir, input string, params benchmark.Pa
 			version = needs[0] + " --version"
 		}
 	}
+	var sources []string
+	for _, src := range ifsFields(L.Sources) {
+		sources = append(sources, filepath.Join(c.root, src))
+	}
 	doc := benchmark.Plan{
 		Project: id,
 		Runtime: benchmark.PlanRuntime{
@@ -179,6 +186,7 @@ func (c *Catalog) planFor(id, runtime, srcdir, input string, params benchmark.Pa
 			Family:     L.Family,
 			Needs:      L.Needs,
 			Probes:     claimed,
+			Sources:    sources,
 		},
 		Family: benchmark.PlanFamily{
 			ID:     L.Family,
@@ -199,18 +207,39 @@ func (c *Catalog) planFor(id, runtime, srcdir, input string, params benchmark.Pa
 
 // Iteration and build-directory placeholders are bound by the execution layer.
 func expandCmd(tmpl, runner, input, approach, bin string, n int) string {
-	s := strings.ReplaceAll(tmpl, "{runner}", runner)
-	s = strings.ReplaceAll(s, "{input}", input)
-	s = strings.ReplaceAll(s, "{approach}", approach)
-	s = strings.ReplaceAll(s, "{bin}", bin)
+	s := strings.ReplaceAll(tmpl, "{runner}", benchmark.QuoteArg(runner))
+	s = strings.ReplaceAll(s, "{input}", benchmark.QuoteArg(input))
+	s = strings.ReplaceAll(s, "{approach}", benchmark.QuoteArg(approach))
+	s = strings.ReplaceAll(s, "{bin}", benchmark.QuoteArg(bin))
 	s = strings.ReplaceAll(s, "{n}", strconv.Itoa(n))
 	return s
 }
 
-var spaceRun = regexp.MustCompile(` +`)
-
+// squeeze collapses runs of spaces outside quotes and drops a trailing space.
 func squeeze(s string) string {
-	return strings.TrimSuffix(spaceRun.ReplaceAllString(s, " "), " ")
+	var out strings.Builder
+	var quote rune
+	escaped := false
+	for _, r := range s {
+		switch {
+		case escaped:
+			escaped = false
+		case quote != 0:
+			if r == quote {
+				quote = 0
+			} else if r == '\\' && quote == '"' {
+				escaped = true
+			}
+		case r == '\'' || r == '"':
+			quote = r
+		case r == '\\':
+			escaped = true
+		case r == ' ' && strings.HasSuffix(out.String(), " "):
+			continue
+		}
+		out.WriteRune(r)
+	}
+	return strings.TrimSuffix(out.String(), " ")
 }
 
 func placeholderNames(run, build string) []string {

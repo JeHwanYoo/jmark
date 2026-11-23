@@ -22,6 +22,7 @@ func Capture(root string, plan benchmark.Plan) (Snapshot, error) {
 	for _, p := range plan.Probes {
 		paths = append(paths, p.Hook)
 	}
+	paths = append(paths, plan.Runtime.Sources...)
 	snapshot := Snapshot{}
 	for _, path := range paths {
 		rel, err := filepath.Rel(root, path)

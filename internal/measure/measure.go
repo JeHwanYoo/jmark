@@ -245,7 +245,7 @@ func (m *Measure) stderr() io.Writer {
 }
 
 func runArgv(cmd string, stderr io.Writer) ([]byte, error) {
-	args := splitSpaces(cmd)
+	args := benchmark.SplitArgs(cmd)
 	if len(args) == 0 {
 		return nil, fmt.Errorf("empty command")
 	}
@@ -259,17 +259,6 @@ func runArgv(cmd string, stderr io.Writer) ([]byte, error) {
 	c.Stderr = stderr
 	err := c.Run()
 	return stdout.Bytes(), err
-}
-
-func splitSpaces(cmd string) []string {
-	parts := strings.Split(cmd, " ")
-	args := make([]string, 0, len(parts))
-	for _, p := range parts {
-		if p != "" {
-			args = append(args, p)
-		}
-	}
-	return args
 }
 
 type probeObs struct {
@@ -286,7 +275,7 @@ func (m *Measure) collectProbe(name, cmd, outPath string, lo, hi, runs int) ([]p
 			if err := os.WriteFile(outPath, nil, 0o644); err != nil {
 				return nil, err
 			}
-			expanded := At(strings.ReplaceAll(cmd, "{probe_out}", outPath), k)
+			expanded := At(strings.ReplaceAll(cmd, "{probe_out}", benchmark.QuoteArg(outPath)), k)
 			if _, err := m.exec(expanded); err != nil {
 				return nil, jerr("probe run failed: %s iters=%d", name, k)
 			}

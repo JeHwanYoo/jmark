@@ -1,0 +1,5 @@
+n = 1
+warmup = 5
+iters = 50
+runs = 10
+metrics = "wall_time cpu_time user_time system_time peak_rss"

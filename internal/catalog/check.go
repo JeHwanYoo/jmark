@@ -102,6 +102,11 @@ func (c *Catalog) CheckRegistry() error {
 		if f.get("needs") == "" {
 			errs = append(errs, jerr("%s: missing needs", rel))
 		}
+		for _, src := range ifsFields(f.get("sources")) {
+			if !filepath.IsLocal(src) || !isFile(filepath.Join(c.root, src)) {
+				errs = append(errs, jerr("%s: source '%s' is not a repository file", rel, src))
+			}
+		}
 		for _, ph := range placeholderNames(run, f.get("build")) {
 			if !placeholders[ph] {
 				errs = append(errs, jerr("%s: unknown placeholder {%s}", rel, ph))

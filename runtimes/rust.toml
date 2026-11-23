@@ -1,0 +1,6 @@
+family = "rs"
+needs = "cargo rustc"
+sources = "families/rs/Cargo.toml families/rs/Cargo.lock"
+build = 'cd "$(dirname {runner})" && JMARK_INPUT={input} JMARK_APPROACH={approach} cargo build --quiet --release --locked --target-dir ../../.jmark/cargo && cp ../../.jmark/cargo/release/runner {bin}'
+run = "{bin} {n} {iters} {probe}"
+version = "rustc --version"
