@@ -263,6 +263,12 @@ and renders them using the currently embedded UI. It writes a temporary comparis
 HTML file and opens it in the browser. Existing saved `report.html` files remain
 unchanged. The temporary comparison file remains available after CLI exit.
 
+Picker rows are `<visibility>/<project>/<run>` followed by a tab and a summary:
+the run's `comment.txt` (written by `bench --comment`, `comment`, or Ctrl-E in
+`open`) or, failing that, the first line of the project's `AGENTS.md`. Only the key
+before the tab is used as the selection. Moving a run between private and public
+keeps its comment.
+
 `delete` and the delete action in the picker validate selected paths and request
 confirmation before removing run directories.
 

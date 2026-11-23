@@ -26,15 +26,18 @@ just open                # pick past runs → compare charts in the browser
 ## Run benchmarks
 
 ```bash
-just bench <id> [--runtime <runtime>] [--format stream|ndjson|html]
+just bench <id> [--runtime <runtime>] [--format stream|ndjson|html] [--comment "<summary>"]
 ```
 
-Without an ID, a terminal picker asks for whatever options you left out. jmark measures every available runtime of the project unless `--runtime` picks one. The default `stream` format prints JSON lines to stdout and saves nothing; progress goes to stderr, so `just bench <id> | jq` works. `ndjson` and `html` save to `artifacts/private/<id>/<timestamp>/`, print the path, and show up in `just open`.
+Without an ID, a terminal picker asks for whatever options you left out. jmark measures every available runtime of the project unless `--runtime` picks one. The default `stream` format prints JSON lines to stdout and saves nothing; progress goes to stderr, so `just bench <id> | jq` works. `ndjson` and `html` save to `artifacts/private/<id>/<timestamp>/`, print the path, and show up in `just open`. `--comment` saves a one-line summary of the experiment as `comment.txt`; the interactive picker asks for one when you save.
 
 ```bash
-just open [<id>]         # Tab to multi-select; Enter = compare, Ctrl-X = delete
+just open [<id>]         # Tab to multi-select; Enter = compare, Ctrl-E = comment, Ctrl-X = delete
+just comment [<project>/<run>] [<text>|--clear]  # set, print, or clear a run summary
 just delete [<id>]       # Tab to multi-select; confirm with y
 ```
+
+Each picker row shows the run's comment. Runs without one show the first line of `benches/<id>/AGENTS.md`, dimmed.
 
 ## Metrics
 

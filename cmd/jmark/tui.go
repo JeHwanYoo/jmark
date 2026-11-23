@@ -25,7 +25,8 @@ var errFzfMissing = errors.New("fzf missing")
 const openUsage = `usage: open [<id>]
 
 fzf multi-select artifacts/<private|public>/<id>/<timestamp> runs (Tab to toggle).
-Enter → chart compare. Ctrl-X → delete selected runs. q → quit.
+Each row shows the run's comment, or the project's AGENTS.md summary when it has none.
+Enter → chart compare. Ctrl-E → comment selected runs. Ctrl-X → delete selected runs. q → quit.
 `
 
 const deleteUsage = `usage: delete [<id>]
@@ -41,11 +42,15 @@ const (
 	artifactQuit artifactAction = iota
 	artifactCompare
 	artifactDelete
+	artifactComment
 )
 
 // open uses Ctrl-X for delete. fzf's default Ctrl-D is delete-char/eof and
 // aborts when the query is empty, so multi-select never reaches deleteConfirmed.
 const openDeleteKey = "ctrl-x"
+
+// openCommentKey edits the summary of the selected runs from the open picker.
+const openCommentKey = "ctrl-e"
 
 func (a *app) cmdOpen(args []string) error {
 	if len(args) > 0 && (args[0] == "-h" || args[0] == "--help") {
@@ -68,6 +73,8 @@ func (a *app) cmdOpen(args []string) error {
 		return errSoftQuit
 	case artifactDelete:
 		return a.deleteConfirmed(root, dirs)
+	case artifactComment:
+		return a.commentRuns(root, dirs)
 	default:
 		return a.openCompare(root, dirs)
 	}
@@ -98,7 +105,7 @@ func (a *app) cmdDelete(args []string) error {
 // pickArtifactRuns is the one multi-select fzf over artifacts/.
 // withCompare enables Enter=compare and Ctrl-X=delete (open).
 // Otherwise Enter deletes (delete command).
-func (a *app) pickArtifactRuns(filter string, withCompare bool) (artifactAction, string, []string, error) {
+func (a *app) pickArtifactRuns(filter string, withCompare bool, verb ...string) (artifactAction, string, []string, error) {
 	root, runs, err := a.artifactRuns(filter)
 	if err != nil {
 		return artifactQuit, "", nil, err
@@ -109,10 +116,17 @@ func (a *app) pickArtifactRuns(filter string, withCompare bool) (artifactAction,
 	var fzfArgs []string
 	if withCompare {
 		fzfArgs = []string{
-			"-m", "--expect=" + openDeleteKey + ",q",
+			"-m", "--expect=" + openDeleteKey + "," + openCommentKey + ",q",
 			"--prompt=jmark open (tab=multi)> ",
 			"--height=40%", "--reverse", "--border",
-			"--header=Tab: toggle · Enter: compare · Ctrl-X: delete · q: quit",
+			"--header=Tab: toggle · Enter: compare · Ctrl-E: comment · Ctrl-X: delete · q: quit",
+		}
+	} else if len(verb) == 1 && verb[0] == "comment" {
+		fzfArgs = []string{
+			"-m", "--expect=q",
+			"--prompt=jmark comment (tab=multi)> ",
+			"--height=40%", "--reverse", "--border",
+			"--header=Tab: toggle · Enter: comment · q: quit",
 		}
 	} else {
 		fzfArgs = []string{
@@ -122,7 +136,7 @@ func (a *app) pickArtifactRuns(filter string, withCompare bool) (artifactAction,
 			"--header=Tab: toggle · Enter: delete (asks y) · q: quit",
 		}
 	}
-	key, picks, err := a.runFzf(linesInput(runs), fzfArgs...)
+	key, picks, err := a.runFzf(a.runRows(runs), append(fzfArgs, runRowArgs...)...)
 	if err != nil {
 		return artifactQuit, "", nil, err
 	}
@@ -143,8 +157,14 @@ func (a *app) pickArtifactRuns(filter string, withCompare bool) (artifactAction,
 	if withCompare && key == openDeleteKey {
 		return artifactDelete, root, dirs, nil
 	}
+	if withCompare && key == openCommentKey {
+		return artifactComment, root, dirs, nil
+	}
 	if withCompare {
 		return artifactCompare, root, dirs, nil
+	}
+	if len(verb) == 1 && verb[0] == "comment" {
+		return artifactComment, root, dirs, nil
 	}
 	return artifactDelete, root, dirs, nil
 }
@@ -350,6 +370,7 @@ func listRuns(root, filter string) ([]string, error) {
 func resolvePicks(root string, picks []string) ([]string, error) {
 	var dirs []string
 	for _, pick := range picks {
+		pick = runKey(pick)
 		if pick == "" {
 			continue
 		}
@@ -438,5 +459,94 @@ func (a *app) openCompare(root string, dirs []string) error {
 		return fmt.Errorf("could not open compare view")
 	}
 	fmt.Fprintf(a.stderr, "jmark: opened compare of %d run(s)\n", len(dirs))
+	return nil
+}
+
+// runRowArgs show the summary column and keep it out of the selection key.
+var runRowArgs = []string{"--delimiter=\t", "--ansi", "--preview=printf '%s\\n' {2..}", "--preview-window=down,3,wrap"}
+
+// runRows renders one "key<TAB>summary" row per run. A run's own comment wins;
+// otherwise the project's AGENTS.md line is shown dimmed. Runs with neither stay bare keys.
+func (a *app) runRows(runs []string) string {
+	rows := make([]string, len(runs))
+	projects := map[string]string{}
+	for i, key := range runs {
+		rows[i] = key
+		parts := strings.Split(key, "/")
+		if len(parts) != 3 {
+			continue
+		}
+		if comment := artifact.Comment(filepath.Join(a.root, "artifacts", parts[0], parts[1], parts[2])); comment != "" {
+			rows[i] = key + "\t" + comment
+			continue
+		}
+		summary, ok := projects[parts[1]]
+		if !ok {
+			summary = artifact.ProjectSummary(a.root, parts[1])
+			projects[parts[1]] = summary
+		}
+		if summary != "" {
+			rows[i] = key + "\t\x1b[2m" + summary + "\x1b[0m"
+		}
+	}
+	return linesInput(rows)
+}
+
+// runKey drops the summary column from a picked row.
+func runKey(row string) string {
+	key, _, _ := strings.Cut(row, "\t")
+	return strings.TrimSpace(key)
+}
+
+// promptComment asks for a one-line summary on stderr; Enter keeps current.
+func (a *app) promptComment(label, current string) string {
+	if label != "" {
+		fmt.Fprintf(a.stderr, "jmark: %s\n", label)
+	}
+	if current != "" {
+		fmt.Fprintf(a.stderr, "jmark: current: %s\n", current)
+		fmt.Fprint(a.stderr, "jmark: comment (Enter = keep, - = clear): ")
+	} else {
+		fmt.Fprint(a.stderr, "jmark: comment (Enter = skip): ")
+	}
+	ans, _ := readLine(a.in)
+	switch ans = strings.TrimSpace(ans); ans {
+	case "":
+		return current
+	case "-":
+		return ""
+	default:
+		return ans
+	}
+}
+
+func (a *app) commentRuns(root string, dirs []string) error {
+	keys := make([]string, len(dirs))
+	current := ""
+	for i, dir := range dirs {
+		rel, err := filepath.Rel(root, dir)
+		if err != nil {
+			return err
+		}
+		keys[i] = filepath.ToSlash(rel)
+		if i == 0 {
+			current = artifact.Comment(dir)
+		}
+	}
+	label := "comment " + keys[0]
+	if len(keys) > 1 {
+		label = fmt.Sprintf("comment %d run(s): %s", len(keys), strings.Join(keys, " "))
+		current = ""
+	}
+	text := a.promptComment(label, current)
+	if len(keys) > 1 && text == "" {
+		return fmt.Errorf("comment cancelled")
+	}
+	for _, key := range keys {
+		if err := artifact.SetComment(a.root, key, text); err != nil {
+			return err
+		}
+		fmt.Fprintf(a.stderr, "jmark: commented %s\n", key)
+	}
 	return nil
 }

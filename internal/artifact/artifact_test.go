@@ -9,7 +9,7 @@ import (
 
 func TestWrite(t *testing.T) {
 	root := t.TempDir()
-	rel, err := Write(root, "demo", []byte(parityNDJSON), "html")
+	rel, err := Write(root, "demo", []byte(parityNDJSON), "html", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -29,7 +29,7 @@ func TestWrite(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, filepath.Dir(rel), "env.json")); err != nil {
 		t.Fatal(err)
 	}
-	ndRel, err := Write(root, "demo", []byte(parityNDJSON), "ndjson")
+	ndRel, err := Write(root, "demo", []byte(parityNDJSON), "ndjson", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +39,7 @@ func TestWrite(t *testing.T) {
 	if !strings.HasSuffix(ndRel, "/result.ndjson") {
 		t.Fatalf("path %s", ndRel)
 	}
-	if _, err := Write(root, "demo", []byte(parityNDJSON), "stream"); err == nil {
+	if _, err := Write(root, "demo", []byte(parityNDJSON), "stream", ""); err == nil {
 		t.Fatal("expected bad mode")
 	}
 }
@@ -70,14 +70,14 @@ func TestPublicationFailureCleansStage(t *testing.T) {
 func TestInvalidInputDoesNotPublish(t *testing.T) {
 	for _, input := range []string{parityNDJSON + "]", parityNDJSON + "}", parityNDJSON + "garbage"} {
 		root := t.TempDir()
-		if _, err := Write(root, "demo", []byte(input), "html"); err == nil {
+		if _, err := Write(root, "demo", []byte(input), "html", ""); err == nil {
 			t.Fatal("malformed result accepted")
 		}
 		if _, err := os.Stat(filepath.Join(root, "artifacts")); !os.IsNotExist(err) {
 			t.Fatal("failed report created artifacts")
 		}
 	}
-	if _, err := Write(t.TempDir(), "../outside", []byte(parityNDJSON), "html"); err == nil {
+	if _, err := Write(t.TempDir(), "../outside", []byte(parityNDJSON), "html", ""); err == nil {
 		t.Fatal("invalid project accepted")
 	}
 }

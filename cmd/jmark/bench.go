@@ -17,7 +17,7 @@ import (
 	"github.com/JeHwanYoo/jmark/internal/source"
 )
 
-const benchUsage = `usage: bench [<id>] [--runtime <runtime>] [--format stream|ndjson|html] [--metrics <id,...>]
+const benchUsage = `usage: bench [<id>] [--runtime <runtime>] [--format stream|ndjson|html] [--metrics <id,...>] [--comment <text>]
 
   <id>       project id; omit on a terminal to choose project, runtime, and format with fzf
   --runtime     run one runtime (default: every available runtime of the project)
@@ -25,6 +25,7 @@ const benchUsage = `usage: bench [<id>] [--runtime <runtime>] [--format stream|n
   --format   stream  Result NDJSON on stdout (default, pipeline)
              ndjson  write artifacts/private/<id>/<timestamp>/result.ndjson; path on stdout
              html    write result.ndjson + report.html under that dir; html path on stdout
+  --comment  one-line summary of the experiment, shown in open (ndjson|html only)
 `
 
 var errBenchHelp = errors.New("bench help")
@@ -36,6 +37,8 @@ type benchOpts struct {
 	format     string
 	formatSet  bool
 	metrics    []string
+	comment    string
+	commentSet bool
 }
 
 func (a *app) cmdBench(args []string) error {
@@ -51,6 +54,9 @@ func (a *app) cmdBench(args []string) error {
 	case "stream", "ndjson", "html":
 	default:
 		return fmt.Errorf("bench: invalid --format '%s' (want: stream|ndjson|html)", opts.format)
+	}
+	if opts.commentSet && opts.format == "stream" && opts.formatSet {
+		return fmt.Errorf("bench: --comment needs --format ndjson|html (stream saves nothing)")
 	}
 	interactive := opts.id == ""
 	if interactive {
@@ -83,6 +89,14 @@ func (a *app) cmdBench(args []string) error {
 		if err != nil {
 			return err
 		}
+		if opts.commentSet && opts.format == "stream" {
+			return fmt.Errorf("bench: --comment needs --format ndjson|html (stream saves nothing)")
+		}
+		if !opts.commentSet && opts.format != "stream" {
+			opts.comment = a.promptComment("", "")
+		}
+	} else if opts.commentSet && opts.format == "stream" {
+		return fmt.Errorf("bench: --comment needs --format ndjson|html (stream saves nothing)")
 	}
 	runtimes, err := a.benchRuntimes(opts)
 	if err != nil {
@@ -160,7 +174,7 @@ func (a *app) cmdBench(args []string) error {
 	case "stream":
 		return a.printLines(lines)
 	default:
-		rel, err := a.writeArtifacts(opts.id, opts.format, lines, sources.Markdown())
+		rel, err := a.writeArtifacts(opts.id, opts.format, opts.comment, lines, sources.Markdown())
 		if err != nil {
 			a.writeErr(err)
 			return fmt.Errorf("could not write artifacts")
@@ -268,6 +282,19 @@ func parseBench(args []string) (benchOpts, error) {
 					return o, fmt.Errorf("bench: unknown metric %q", id)
 				}
 			}
+		case a == "--comment" || strings.HasPrefix(a, "--comment="):
+			if o.commentSet {
+				return o, fmt.Errorf("bench: --comment given more than once")
+			}
+			value := strings.TrimPrefix(a, "--comment=")
+			if a == "--comment" {
+				if i+1 >= len(args) {
+					return o, fmt.Errorf("bench: --comment needs a value")
+				}
+				i++
+				value = args[i]
+			}
+			o.comment, o.commentSet = value, true
 		case a == "--format":
 			if i+1 >= len(args) {
 				return o, fmt.Errorf("bench: --format needs a value")
@@ -327,13 +354,13 @@ func (a *app) printLines(lines [][]byte) error {
 	return nil
 }
 
-func (a *app) writeArtifacts(id, format string, lines [][]byte, sources ...string) (string, error) {
+func (a *app) writeArtifacts(id, format, comment string, lines [][]byte, sources ...string) (string, error) {
 	var body bytes.Buffer
 	for _, line := range lines {
 		body.Write(line)
 		body.WriteByte('\n')
 	}
-	return artifact.Write(a.root, id, body.Bytes(), format, sources...)
+	return artifact.Write(a.root, id, body.Bytes(), format, comment, sources...)
 }
 
 func sinkDiff(objs []map[string]any) string {

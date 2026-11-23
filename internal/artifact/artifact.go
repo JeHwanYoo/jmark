@@ -13,7 +13,7 @@ import (
 )
 
 // Write renders all outputs before staging them and returns the published entry path.
-func Write(root, project string, ndjson []byte, format string, sources ...string) (string, error) {
+func Write(root, project string, ndjson []byte, format, comment string, sources ...string) (string, error) {
 	if !catalog.ValidID(project) {
 		return "", fmt.Errorf("invalid artifact project %q", project)
 	}
@@ -28,6 +28,9 @@ func Write(root, project string, ndjson []byte, format string, sources ...string
 	files := map[string][]byte{"result.ndjson": ndjson, "env.json": env}
 	if sourceMarkdown != "" {
 		files["sources.md"] = []byte(sourceMarkdown)
+	}
+	if comment = NormalizeComment(comment); comment != "" {
+		files[CommentFile] = []byte(comment + "\n")
 	}
 	entry := "result.ndjson"
 	if format == "html" {

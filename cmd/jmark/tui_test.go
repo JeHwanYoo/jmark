@@ -134,7 +134,7 @@ func TestOpenDeleteFlows(t *testing.T) {
 		fzf: func(input string, args []string) (string, []string, error) {
 			listed = input
 			joined := strings.Join(args, " ")
-			if !strings.Contains(joined, "--expect=ctrl-x,q") || !strings.Contains(joined, "-m") {
+			if !strings.Contains(joined, "--expect=ctrl-x,ctrl-e,q") || !strings.Contains(joined, "-m") {
 				t.Fatalf("args %v", args)
 			}
 			return "", nil, errSoftQuit

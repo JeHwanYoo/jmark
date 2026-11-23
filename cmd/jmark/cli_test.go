@@ -203,7 +203,7 @@ func TestWriteArtifactsHTML(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rel, err := a.writeArtifacts("demo", "html", [][]byte{line})
+	rel, err := a.writeArtifacts("demo", "html", "", [][]byte{line})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -250,7 +250,7 @@ func TestWriteArtifactsHTML(t *testing.T) {
 	if host["os"] != "Darwin" {
 		t.Fatalf("host %#v", env["host"])
 	}
-	ndRel, err := a.writeArtifacts("demo", "ndjson", [][]byte{line})
+	ndRel, err := a.writeArtifacts("demo", "ndjson", "", [][]byte{line})
 	if err != nil {
 		t.Fatal(err)
 	}

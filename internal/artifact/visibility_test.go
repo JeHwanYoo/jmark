@@ -9,7 +9,7 @@ import (
 
 func TestVisibilityRoundTrip(t *testing.T) {
 	root := t.TempDir()
-	rel, err := Write(root, "demo", []byte(parityNDJSON), "ndjson", "## Source\n\n```text\nsnapshot\n```\n")
+	rel, err := Write(root, "demo", []byte(parityNDJSON), "ndjson", "", "## Source\n\n```text\nsnapshot\n```\n")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +42,7 @@ func TestVisibilityRoundTrip(t *testing.T) {
 
 func TestVisibilityRejectsOverwriteAndTraversal(t *testing.T) {
 	root := t.TempDir()
-	rel, err := Write(root, "demo", []byte(parityNDJSON), "ndjson")
+	rel, err := Write(root, "demo", []byte(parityNDJSON), "ndjson", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,11 +74,11 @@ func TestVisibilityRejectsOverwriteAndTraversal(t *testing.T) {
 func TestPublicSiteContainsOnlyPublicSnapshots(t *testing.T) {
 	root := t.TempDir()
 	private := strings.ReplaceAll(parityNDJSON, "demo", "PRIVATE-ONLY-SENTINEL")
-	if _, err := Write(root, "secret", []byte(private), "html"); err != nil {
+	if _, err := Write(root, "secret", []byte(private), "html", ""); err != nil {
 		t.Fatal(err)
 	}
 	markdown := "## loop.src\n\n```text\nmeasured-source\n```\n"
-	rel, err := Write(root, "demo", []byte(parityNDJSON), "ndjson", markdown)
+	rel, err := Write(root, "demo", []byte(parityNDJSON), "ndjson", "", markdown)
 	if err != nil {
 		t.Fatal(err)
 	}

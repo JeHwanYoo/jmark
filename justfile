@@ -24,9 +24,13 @@ create id +runtimes:
 bench *args:
     @{{jmark}} bench {{args}}
 
-# fzf multi-select artifacts/<private|public>/<id>/<timestamp> runs: Enter = chart compare, Ctrl-X = delete.
+# fzf multi-select artifacts/<private|public>/<id>/<timestamp> runs with their comments: Enter = chart compare, Ctrl-E = comment, Ctrl-X = delete.
 open *args:
     @{{jmark}} open {{args}}
+
+# One-line run summary shown in open. Omit the run to pick with fzf; --clear removes it.
+comment *args:
+    @{{jmark}} comment {{args}}
 
 # fzf multi-select artifacts/<private|public>/<id>/<timestamp> runs and delete after y confirm.
 delete *args:

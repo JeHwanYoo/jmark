@@ -12,7 +12,7 @@ import (
 	"github.com/JeHwanYoo/jmark/internal/catalog"
 )
 
-const usage = "usage: doctor | list | runtimes [lock|install [<runtime>...]] | create <id> <runtime>... | bench [<id>] [--runtime <runtime>] [--format stream|ndjson|html] | open [<id>] | delete [<id>] | public [<project>/<run>] | private [<project>/<run>] | site [--base-url <url>]"
+const usage = "usage: doctor | list | runtimes [lock|install [<runtime>...]] | create <id> <runtime>... | bench [<id>] [--runtime <runtime>] [--format stream|ndjson|html] | open [<id>] | comment [<project>/<run>] [<text>...|--clear] | delete [<id>] | public [<project>/<run>] | private [<project>/<run>] | site [--base-url <url>]"
 
 type app struct {
 	root   string
@@ -91,6 +91,8 @@ func (a *app) dispatch(args []string) error {
 		return a.cmdBench(args[1:])
 	case "open":
 		return a.cmdOpen(args[1:])
+	case "comment":
+		return a.cmdComment(args[1:])
 	case "public", "private":
 		return a.cmdVisibility(args[0], args[1:])
 	case "site":

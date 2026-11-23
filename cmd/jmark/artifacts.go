@@ -35,7 +35,7 @@ func (a *app) cmdVisibility(target string, args []string) error {
 		if len(runs) == 0 {
 			return fmt.Errorf("no %s runs", source)
 		}
-		key, selected, err := a.runFzf(linesInput(runs), "-m", "--expect=q", "--prompt=jmark "+target+"> ", "--height=40%", "--reverse", "--border", "--header=Tab: toggle · Enter: move to "+target+" · q: quit")
+		key, selected, err := a.runFzf(a.runRows(runs), append([]string{"-m", "--expect=q", "--prompt=jmark " + target + "> ", "--height=40%", "--reverse", "--border", "--header=Tab: toggle · Enter: move to " + target + " · q: quit"}, runRowArgs...)...)
 		if err != nil {
 			return err
 		}
@@ -46,8 +46,9 @@ func (a *app) cmdVisibility(target string, args []string) error {
 		for _, run := range runs {
 			allowed[run] = true
 		}
-		for _, run := range selected {
-			if !allowed[run] {
+		for i, run := range selected {
+			selected[i] = runKey(run)
+			if !allowed[selected[i]] {
 				return fmt.Errorf("invalid pick: %s", run)
 			}
 		}
