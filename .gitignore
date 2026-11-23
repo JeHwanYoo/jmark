@@ -31,3 +31,11 @@ __pycache__/
 # Scratch / OS
 *.tmp
 .DS_Store
+
+# Local-only benchmark sources and optional aliases for the benchmark runner
+/private/
+/benches/inconel-grid-compound
+/benches/inconel-grid-dense
+/benches/inconel-grid-sparse
+/families/gpui
+/runtimes/gpui.toml
